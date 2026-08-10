@@ -1,25 +1,45 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   Design tokens — carried over from the Ebene Mews BMS so both products read
-   as one system: navy on light slate, white surfaces, hairline borders.
+   Design tokens — Graphite & Emerald.
+
+   Shares the BMS visual grammar (light canvas, white surfaces, hairline
+   borders, pill controls) but not its hue: the BMS shell is navy, this one is
+   near-black graphite with emerald as the single accent. Colour is spent only
+   where it carries meaning — the status ramp below is deliberately unchanged
+   so alerts read identically across both products.
+
+   The *-rgb channel tokens exist so translucent overlays can be themed from
+   here rather than hardcoding the brand colour into individual rules.
    ========================================================================== */
 
 :root {
   --font-sans: "Poppins", "Inter", "Segoe UI", Arial, Helvetica, sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --cr: #1f3a68;
-  --cb: #101f38;
-  --cg: #4f7cc9;
-  --cg2: #2f5fa8;
-  --cc: #eef2f7;
-  --clg: #e2e8f0;
-  --cbg: #d8e0ea;
-  --cbr: #cbd5e1;
+
+  /* Brand */
+  --cr: #1f262e;              /* primary — graphite */
+  --cb: #16191d;              /* deepest graphite, top of the sidebar gradient */
+  --cg: #10b981;              /* accent, bright — gradients on dark surfaces */
+  --cg2: #047857;             /* accent, deep — focus rings and borders on light */
+
+  --cr-rgb: 31, 38, 46;
+  --cg-rgb: 4, 120, 87;
+  --shadow-rgb: 16, 24, 32;
+  --border-rgb: 203, 209, 214;
+  --tint-rgb: 241, 243, 244;
+
+  /* Neutrals */
+  --cc: #f1f3f4;             /* canvas */
+  --clg: #e3e6e8;
+  --cbg: #d9dde0;
+  --cbr: #cbd1d6;
   --cwh: #ffffff;
-  --ct: #16233b;
-  --cmt: #5b6b81;
-  --cmtl: #94a3b8;
+  --ct: #16191d;             /* text */
+  --cmt: #5f6b76;            /* muted text */
+  --cmtl: #98a2ab;
+
+  /* Status ramp — shared with the BMS on purpose */
   --ok: #166534;
   --lt-ok: #ecfdf5;
   --wn: #92400e;
@@ -32,6 +52,7 @@
   --lt-tl: #f0fdfa;
   --vio: #5b21b6;
   --lt-vio: #f5f3ff;
+
   --radius: 16px;
   --radius-sm: 10px;
   --radius-xs: 6px;
@@ -161,7 +182,7 @@ a {
 
 .field:focus {
   border-color: var(--cg2);
-  box-shadow: 0 0 0 3px rgba(62, 105, 170, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--cg-rgb), 0.16);
 }
 
 .label {
@@ -208,7 +229,7 @@ a {
 
 .sidebar__logo {
   padding: 20px 22px 18px;
-  border-bottom: 1px solid rgba(62, 105, 170, 0.18);
+  border-bottom: 1px solid rgba(var(--cg-rgb), 0.18);
   display: flex;
   align-items: center;
   gap: 11px;
@@ -222,7 +243,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px rgba(62, 105, 170, 0.4);
+  box-shadow: 0 4px 14px rgba(var(--cg-rgb), 0.4);
   font-size: 14px;
   font-weight: 700;
   color: #fff;
@@ -288,7 +309,7 @@ a {
 
 .sidebar__section.active {
   background: rgba(255, 255, 255, 0.055);
-  border-color: rgba(62, 105, 170, 0.18);
+  border-color: rgba(var(--cg-rgb), 0.18);
 }
 
 .sidebar__section-title {
@@ -301,7 +322,7 @@ a {
 }
 
 .sidebar__section.active .sidebar__section-title {
-  color: #b9d0ef;
+  color: #6ee7b7;
 }
 
 .sidebar__section-sub {
@@ -329,8 +350,8 @@ a {
 }
 
 .sidebar__item.active {
-  background: rgba(62, 105, 170, 0.22);
-  border-color: rgba(62, 105, 170, 0.34);
+  background: rgba(var(--cg-rgb), 0.22);
+  border-color: rgba(var(--cg-rgb), 0.34);
   color: #fff;
   font-weight: 700;
 }
@@ -354,7 +375,7 @@ a {
   color: #fff;
   background: linear-gradient(135deg, var(--cg), var(--cg2));
   border-color: var(--cg);
-  box-shadow: 0 3px 10px rgba(62, 105, 170, 0.25);
+  box-shadow: 0 3px 10px rgba(var(--cg-rgb), 0.25);
 }
 
 .sidebar__item:hover .sidebar__item-mark {
@@ -396,7 +417,7 @@ a {
 
 .sidebar__account {
   padding: 12px 16px;
-  border-top: 1px solid rgba(62, 105, 170, 0.18);
+  border-top: 1px solid rgba(var(--cg-rgb), 0.18);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -474,7 +495,7 @@ a {
   border-right: 1px solid var(--clg);
   border-top-right-radius: 26px;
   border-bottom-right-radius: 26px;
-  box-shadow: 0 10px 30px rgba(15, 32, 60, 0.06);
+  box-shadow: 0 10px 30px rgba(var(--shadow-rgb), 0.06);
 }
 
 .app-layout--collapsed .sidebar__logo {
@@ -530,7 +551,7 @@ a {
   border-radius: 18px;
   background: #fff;
   border: 1px solid var(--clg);
-  box-shadow: 0 6px 16px rgba(15, 32, 60, 0.06);
+  box-shadow: 0 6px 16px rgba(var(--shadow-rgb), 0.06);
 }
 
 .app-layout--collapsed .sidebar__section.active {
@@ -575,7 +596,7 @@ a {
   color: #fff;
   background: linear-gradient(135deg, var(--cg), var(--cg2));
   border-color: var(--cg);
-  box-shadow: 0 6px 14px rgba(31, 58, 104, 0.28);
+  box-shadow: 0 6px 14px rgba(var(--cg-rgb), 0.28);
 }
 
 .app-layout--collapsed .main-content {
@@ -688,7 +709,7 @@ a {
 
 .topbar__chip--off {
   background: var(--cbg);
-  border-color: rgba(203, 213, 225, 0.6);
+  border-color: rgba(var(--border-rgb), 0.6);
   color: var(--cmt);
 }
 
@@ -750,7 +771,7 @@ a {
   background: var(--cwh);
   border-radius: var(--radius);
   border: 1px solid var(--clg);
-  box-shadow: 0 1px 2px rgba(15, 32, 60, 0.04);
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.04);
   margin-bottom: 16px;
   overflow: hidden;
 }
@@ -803,7 +824,7 @@ a {
   border-radius: 16px;
   padding: 15px 16px;
   border: 1px solid var(--clg);
-  box-shadow: 0 1px 2px rgba(15, 32, 60, 0.05);
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.05);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -836,7 +857,7 @@ a {
   align-items: center;
   justify-content: center;
   background: var(--cc);
-  border: 1px solid rgba(203, 213, 225, 0.48);
+  border: 1px solid rgba(var(--border-rgb), 0.48);
   flex-shrink: 0;
 }
 
@@ -864,8 +885,8 @@ a {
   min-height: 18px;
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgba(241, 245, 250, 0.78);
-  border: 1px solid rgba(203, 213, 225, 0.48);
+  background: rgba(var(--tint-rgb), 0.78);
+  border: 1px solid rgba(var(--border-rgb), 0.48);
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -902,7 +923,7 @@ a {
   border: 1px solid var(--clg);
   border-radius: 12px;
   padding: 12px 14px;
-  box-shadow: 0 1px 2px rgba(15, 32, 60, 0.04);
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.04);
 }
 
 .metric-tile__label {
@@ -960,17 +981,17 @@ a {
 .data-table td {
   padding: 10px 12px;
   font-size: 11.5px;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.25);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.25);
   white-space: nowrap;
   color: var(--ct);
 }
 
 .data-table tbody tr:nth-child(even) {
-  background: rgba(241, 245, 250, 0.5);
+  background: rgba(var(--tint-rgb), 0.5);
 }
 
 .data-table tbody tr:hover {
-  background: rgba(62, 105, 170, 0.06);
+  background: rgba(var(--cg-rgb), 0.06);
 }
 
 .data-table .empty-cell {
@@ -1100,8 +1121,8 @@ a {
   align-items: center;
   gap: 5px;
   border-radius: 999px;
-  border: 1px solid rgba(203, 213, 225, 0.55);
-  background: rgba(241, 245, 250, 0.8);
+  border: 1px solid rgba(var(--border-rgb), 0.55);
+  background: rgba(var(--tint-rgb), 0.8);
   padding: 3px 9px;
   color: var(--cmt);
   font-size: 10px;
@@ -1167,7 +1188,7 @@ a {
   height: 16px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(15, 32, 60, 0.24);
+  box-shadow: 0 1px 3px rgba(var(--shadow-rgb), 0.24);
   transition: transform 0.18s ease;
 }
 
@@ -1296,7 +1317,7 @@ a {
   align-items: center;
   gap: 10px;
   padding: 9px 0;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.3);
 }
 
 .pipeline-row:last-child {
@@ -1376,7 +1397,7 @@ a {
 
 .step-chip--current {
   background: var(--lt-blu);
-  border-color: rgba(47, 95, 168, 0.28);
+  border-color: rgba(var(--cg-rgb), 0.28);
   color: var(--blu);
   font-weight: 800;
 }
@@ -1392,7 +1413,7 @@ a {
   gap: 10px;
   align-items: baseline;
   padding: 7px 0;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.3);
   font-size: 11.5px;
   color: var(--ct);
 }
@@ -1423,12 +1444,12 @@ a {
   border: 1px solid var(--clg);
   border-radius: var(--radius);
   padding: 20px 18px 18px;
-  box-shadow: 0 1px 2px rgba(15, 32, 60, 0.05);
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.05);
 }
 
 .plan-card--popular {
   border-color: var(--cg2);
-  box-shadow: 0 10px 28px rgba(31, 58, 104, 0.1);
+  box-shadow: 0 10px 28px rgba(var(--cg-rgb), 0.1);
 }
 
 .plan-card__badge {
@@ -1522,7 +1543,7 @@ a {
   align-items: center;
   gap: 14px;
   padding: 13px 20px;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.3);
 }
 
 .flag-row:last-child {
@@ -1585,7 +1606,7 @@ a {
   border: 1px solid var(--clg);
   border-radius: 12px;
   padding: 14px;
-  box-shadow: 0 1px 2px rgba(15, 32, 60, 0.04);
+  box-shadow: 0 1px 2px rgba(var(--shadow-rgb), 0.04);
 }
 
 .health-tile--warn {
@@ -1631,7 +1652,7 @@ a {
   align-items: center;
   gap: 11px;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.3);
 }
 
 .alert-row:last-child {
@@ -1681,7 +1702,7 @@ a {
   display: flex;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.3);
   font-size: 11.5px;
   align-items: baseline;
 }
@@ -1708,7 +1729,7 @@ a {
   align-items: center;
   gap: 12px;
   padding: 11px 0;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+  border-bottom: 1px solid rgba(var(--border-rgb), 0.3);
 }
 
 .number-row:last-child {
@@ -1752,7 +1773,7 @@ a {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(11, 20, 38, 0.45);
+  background: rgba(var(--shadow-rgb), 0.45);
   backdrop-filter: blur(2px);
 }
 
@@ -1764,7 +1785,7 @@ a {
   background: var(--cwh);
   border-radius: var(--radius);
   border: 1px solid var(--clg);
-  box-shadow: 0 28px 70px rgba(7, 17, 35, 0.24);
+  box-shadow: 0 28px 70px rgba(var(--shadow-rgb), 0.24);
   overflow: hidden;
 }
 
@@ -1861,7 +1882,7 @@ a {
 
 .searchbox input:focus {
   border-color: var(--cg2);
-  box-shadow: 0 0 0 3px rgba(62, 105, 170, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--cg-rgb), 0.14);
 }
 
 .searchbox svg {

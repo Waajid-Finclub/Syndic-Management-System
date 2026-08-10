@@ -12,6 +12,12 @@ def create_app(config_object=Config):
     app = Flask(__name__, instance_relative_config=False)
     app.config.from_object(config_object)
 
+    # Match `/api/users` and `/api/users/` on the same rule. Without this Flask
+    # 308s to the canonical trailing-slash form, while the Next.js proxy strips
+    # the trailing slash again — an endless redirect the browser reports as
+    # "Failed to fetch".
+    app.url_map.strict_slashes = False
+
     _validate_secret(app)
     _ensure_instance_folder(app)
 
