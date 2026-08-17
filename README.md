@@ -142,7 +142,7 @@ The root image runs both services in one container:
 - `frontend` - Next.js standalone server on port `3000`
 - `backend` - Flask API served by Gunicorn on `127.0.0.1:5000` inside the same container
 
-Expose container port `3000`. Point the domain `https://syndic.blocwise.net` at path `/`. The frontend proxies `/api/*` to `http://127.0.0.1:5000`, so the backend does not need a public route.
+Expose container port `3000` and make the EasyPanel domain destination `http://bms_v1-syndic:3000/`. `FRONTEND_PORT=3000` intentionally overrides EasyPanel's injected `PORT` value so the app and domain target stay aligned. Point the domain `https://syndic.blocwise.net` at path `/`. The frontend proxies `/api/*` to `http://127.0.0.1:5000`, so the backend does not need a public route.
 
 Set these environment variables in EasyPanel. Use `.env.easypanel.example` as the committed template and `.env.easypanel` as the local ignored copy:
 

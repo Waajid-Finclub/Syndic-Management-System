@@ -12,7 +12,11 @@ export API_INTERNAL_URL="${API_INTERNAL_URL:-http://127.0.0.1:5000}"
 export NODE_ENV="${NODE_ENV:-production}"
 export NEXT_TELEMETRY_DISABLED="${NEXT_TELEMETRY_DISABLED:-1}"
 export HOSTNAME="${HOSTNAME:-0.0.0.0}"
-export PORT="${PORT:-3000}"
+if [ -n "${FRONTEND_PORT:-}" ]; then
+  export PORT="$FRONTEND_PORT"
+else
+  export PORT="${PORT:-3000}"
+fi
 
 if [ -z "${CORS_ORIGINS:-}" ] && [ -n "${APP_PUBLIC_URL:-}" ]; then
   export CORS_ORIGINS="$APP_PUBLIC_URL"

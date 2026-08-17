@@ -78,6 +78,6 @@ USER app
 EXPOSE 3000
 
 HEALTHCHECK --interval=20s --timeout=5s --retries=5 --start-period=30s \
-    CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || '3000')).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1:' + (process.env.FRONTEND_PORT || process.env.PORT || '3000')).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["start-syndic"]
