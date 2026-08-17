@@ -1,6 +1,7 @@
 """Configuration for the SyndicMS admin console backend."""
 import os
 from datetime import timedelta
+from urllib.parse import urlsplit, urlunsplit
 
 from dotenv import load_dotenv
 
@@ -33,11 +34,25 @@ def _env_list(name, default):
     return [item.strip() for item in os.environ.get(name, default).split(',') if item.strip()]
 
 
+def _default_database_url():
+    return f'sqlite:///{os.path.join(basedir, "instance", "syndic_ms.db")}'
+
+
+def _clean_database_url(value):
+    value = value.strip()
+    parsed = urlsplit(value)
+    if parsed.scheme in {'mysql', 'mysql+pymysql'} and parsed.path.endswith('+'):
+        # EasyPanel values are sometimes copied with a trailing plus after the
+        # database name. That points SQLAlchemy at the wrong database.
+        parsed = parsed._replace(path=parsed.path[:-1])
+        value = urlunsplit(parsed)
+    return value
+
+
 def _database_url():
-    value = os.environ.get(
-        'DATABASE_URL',
-        f'sqlite:///{os.path.join(basedir, "instance", "syndic_ms.db")}',
-    )
+    value = _clean_database_url(os.environ.get('DATABASE_URL') or '')
+    if not value:
+        value = _default_database_url()
     # Managed MySQL services expose mysql:// URLs, while SQLAlchemy needs an
     # installed DBAPI driver in the scheme. PyMySQL is pure Python.
     if value.startswith('mysql://'):
