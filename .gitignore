@@ -55,4 +55,5 @@ desktop.ini
 .codex/
 graphify-out/
 .env.docker
+.env.easypanel
 .env.production

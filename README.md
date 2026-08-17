@@ -127,17 +127,50 @@ npm run verify
 
 ## Docker / EasyPanel Deployment
 
-This repo ships a Docker Compose setup for EasyPanel:
+This repo supports two Docker Compose deployment modes:
+
+- `docker-compose.easypanel.yml` - production EasyPanel app using an EasyPanel-managed MySQL service
+- `docker-compose.yml` - full-stack compose with its own MySQL container for local or standalone hosting
+
+### EasyPanel managed MySQL
+
+Use `docker-compose.easypanel.yml` for the EasyPanel setup shown in your dashboard. It runs only:
 
 - `frontend` - Next.js standalone server on port `3000`
 - `backend` - Flask API served by Gunicorn on port `5000` inside the Docker network
-- `db` - MySQL 8.4 with a persistent named volume
 - `backend_instance` - persistent Flask instance/uploads volume
 
-In EasyPanel, create a Compose app from this repository and use `docker-compose.yml`.
-Expose only the `frontend` service, port `3000`. The frontend proxies `/api/*` to `http://backend:5000` through `API_INTERNAL_URL`, so the backend does not need a public route.
+Expose only the `frontend` service, port `3000`. Point the domain `https://syndic.blocwise.net` at path `/`. The frontend proxies `/api/*` to `http://backend:5000` through `API_INTERNAL_URL`, so the backend does not need a public route.
 
-Set these environment variables in EasyPanel. Use `.env.docker.example` as the template:
+Set these environment variables in EasyPanel. Use `.env.easypanel.example` as the committed template and `.env.easypanel` as the local ignored copy:
+
+```text
+APP_PUBLIC_URL=https://syndic.blocwise.net
+CORS_ORIGINS=https://syndic.blocwise.net
+FRONTEND_PORT=3000
+SECRET_KEY=<long-random-secret>
+DATABASE_URL=mysql://mysql:<db-password>@bms_v1_syndic-db:3306/bms_v1
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SAMESITE=Lax
+PAYMENT_GATEWAY=simulated
+API_PROXY_DEBUG=false
+API_REQUEST_DEBUG=false
+```
+
+The database values from EasyPanel are:
+
+```text
+MYSQL_HOST=bms_v1_syndic-db
+MYSQL_PORT=3306
+MYSQL_DATABASE=bms_v1
+MYSQL_USER=mysql
+```
+
+Keep the database password and root password only in EasyPanel secrets or the ignored local env file.
+
+### Full-stack compose
+
+Use `docker-compose.yml` if the deployment should create its own MySQL container. Set these environment variables in EasyPanel or in a local ignored `.env.docker` file. Use `.env.docker.example` as the template:
 
 ```text
 APP_PUBLIC_URL=https://your-domain.example

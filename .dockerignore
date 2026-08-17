@@ -5,6 +5,7 @@
 .env.*
 !.env.example
 !.env.docker.example
+!.env.easypanel.example
 
 backend/instance
 backend/__pycache__
