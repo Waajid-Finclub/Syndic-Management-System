@@ -71,6 +71,45 @@ CONSOLE_ROLE_KEYS = [r['key'] for r in CONSOLE_ROLES]
 MANAGED_ROLE_KEYS = [r['key'] for r in MANAGED_ROLES]
 ROLE_LABELS = {r['key']: r['label'] for r in MANAGED_ROLES}
 
+# --- Resident app ----------------------------------------------------------
+#
+# The console matrix above does not apply to the resident PWA. A resident has
+# no modules; they have their own unit, and the only question worth asking is
+# whether they hold it or rent it. Co-owners get everything. Tenants get the
+# operational features but neither the owner's money nor the owner's vote —
+# service charges are the owner's liability and shares are the owner's title.
+
+RESIDENT_ROLE_KEYS = ['co_owner', 'tenant']
+
+RESIDENT_FEATURES = [
+    {'key': 'finance', 'label': 'Finances & payments', 'roles': ['co_owner']},
+    {'key': 'voting', 'label': 'AGM voting', 'roles': ['co_owner']},
+    {'key': 'private_documents', 'label': 'Unit paperwork', 'roles': ['co_owner']},
+    {'key': 'maintenance', 'label': 'Maintenance requests', 'roles': ['co_owner', 'tenant']},
+    {'key': 'facilities', 'label': 'Facility booking', 'roles': ['co_owner', 'tenant']},
+    {'key': 'visitors', 'label': 'Visitor registration', 'roles': ['co_owner', 'tenant']},
+    {'key': 'assets', 'label': 'Parking, storage & EV', 'roles': ['co_owner', 'tenant']},
+    {'key': 'documents', 'label': 'Document library', 'roles': ['co_owner', 'tenant']},
+    {'key': 'community', 'label': 'Notices & announcements', 'roles': ['co_owner', 'tenant']},
+]
+RESIDENT_FEATURE_KEYS = [f['key'] for f in RESIDENT_FEATURES]
+
+
+def resident_features(user):
+    """Return {feature_key: bool} for a resident account."""
+    role = getattr(user, 'role', None)
+    return {feature['key']: role in feature['roles'] for feature in RESIDENT_FEATURES}
+
+
+def has_resident_feature(user, feature):
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return False
+    if getattr(user, 'role', None) not in RESIDENT_ROLE_KEYS:
+        return False
+    if getattr(user, 'status', None) != 'active':
+        return False
+    return resident_features(user).get(feature, False)
+
 
 def _matrix(spec):
     """Normalise a {module: [caps]} spec, intersecting with valid caps."""

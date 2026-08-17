@@ -2,10 +2,7 @@
 
 Multi-tenant SaaS platform for Mauritian syndic (co-ownership) management.
 
-This repository currently contains the **Super Admin Console** — the platform-level
-workspace described as the "Master Admin / Multi-Property Console" in the SMS
-architecture document. The syndic manager console and the resident mobile app are
-separate deliverables and are not built here yet.
+This repository currently contains the **Super Admin Console** and the resident PWA under `/app`. The admin console is the platform-level workspace described as the "Master Admin / Multi-Property Console" in the SMS architecture document.
 
 It is deliberately a separate codebase from the Ebene Mews Building Management
 System (BMS). The two products share a design language, not a database.
@@ -52,23 +49,34 @@ Open:
 http://127.0.0.1:3000
 ```
 
-## Demo data
+## Fresh baseline
 
 ```powershell
 cd backend
 python seed.py --reset
 ```
 
-This builds a 127-property portfolio: the six named client properties from the
-console design, plus 121 synthetic developments balanced so the platform totals
-land exactly on 8,420 units, 3,200 parking bays, 1,850 storage units and 6,891
-portal users, with the Basic 15 / Silver 72 / Premium 40 plan mix. Every headline
-figure in the console is a real sum over real rows — nothing is hardcoded.
+This resets the local database to a clean baseline. It does not create demo
+portfolio, invoice, payment, maintenance, voting, visitor, document, WhatsApp message history,
+monitoring, or revenue-history rows. It keeps the plan/feature reference catalog,
+one starter resident scope, and one login for each supported role. The WhatsApp Centre starts with the approved template catalog and a sandbox connected number.
 
-Seed credentials:
+Admin console credentials:
 
 ```text
-admin@syndicms.mu / SyndicAdmin2026!
+super_admin     admin@syndicms.mu / AdminConsole2026!
+platform_admin  platform@syndicms.mu / AdminConsole2026!
+support_user    support@syndicms.mu / AdminConsole2026!
+auditor         auditor@syndicms.mu / AdminConsole2026!
+```
+
+The admin console and resident app intentionally use different seeded passwords; each login endpoint rejects the other side's accounts.
+
+Resident PWA credentials:
+
+```text
+co_owner  coowner@syndicms.mu / ResidentApp2026!
+tenant    tenant@syndicms.mu / ResidentApp2026!
 ```
 
 On an empty database with no seed, the app redirects to `/setup` to create the
@@ -101,11 +109,12 @@ app; the login endpoint rejects them here.
 
 ## Verification
 
-Backend smoke test and seed:
+Backend fresh-baseline smoke test:
 
 ```powershell
 cd backend
 python seed.py --reset
+python tests/test_resident_api.py
 ```
 
 Frontend checks:

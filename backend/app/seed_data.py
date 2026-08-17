@@ -1,7 +1,7 @@
 """
 Reference data for a fresh platform.
 
-The plan catalog and feature flag list are inserted during first-run setup so a
+The plan catalog, feature flag list and WhatsApp template catalog are inserted during first-run setup so a
 brand-new install already reflects the commercial model in the SMS architecture
 document: MUR 100/175/250 per unit per month, 15% VAT, free setup fee promo.
 """
@@ -78,6 +78,100 @@ DEFAULT_FEATURE_FLAGS = [
     {'feature_key': 'visitor-qr-access', 'description': 'QR code visitor parking passes', 'is_enabled': True, 'scope': 'Silver+'},
 ]
 
+DEFAULT_WHATSAPP_TEMPLATES = [
+    {
+        'name': 'invoice_notification',
+        'category': 'UTILITY',
+        'status': 'approved',
+        'body': (
+            'Hello {{name}}, your service charge invoice for {{period}} is ready. '
+            'Amount due: MUR {{amount}}, payable by {{due_date}}. '
+            'Open the SyndicMS app to view the breakdown or pay online.'
+        ),
+        'cost_per_message': 0.85,
+    },
+    {
+        'name': 'payment_reminder',
+        'category': 'UTILITY',
+        'status': 'approved',
+        'body': (
+            'Hello {{name}}, MUR {{amount}} remains outstanding for unit {{unit}}. '
+            'Please settle it by {{due_date}} or contact your syndic manager if this is under review.'
+        ),
+        'cost_per_message': 0.85,
+    },
+    {
+        'name': 'payment_receipt',
+        'category': 'UTILITY',
+        'status': 'approved',
+        'body': (
+            'Thank you {{name}}. We received MUR {{amount}} for unit {{unit}}. '
+            'Receipt {{receipt_ref}} is available in your SyndicMS app.'
+        ),
+        'cost_per_message': 0.85,
+    },
+    {
+        'name': 'maintenance_update',
+        'category': 'UTILITY',
+        'status': 'approved',
+        'body': (
+            '{{development}} maintenance update: {{summary}}. '
+            'Expected on {{date}} between {{start_time}} and {{end_time}}.'
+        ),
+        'cost_per_message': 0.85,
+    },
+    {
+        'name': 'meeting_notice',
+        'category': 'UTILITY',
+        'status': 'approved',
+        'body': (
+            'Notice of {{meeting_type}} for {{development}} on {{date}} at {{time}}, {{venue}}. '
+            'Agenda and proxy documents are available in the SyndicMS app.'
+        ),
+        'cost_per_message': 0.85,
+    },
+    {
+        'name': 'emergency_alert',
+        'category': 'UTILITY',
+        'status': 'approved',
+        'body': 'URGENT - {{development}}: {{summary}}. {{instruction}} Contact {{contact}} for help.',
+        'cost_per_message': 0.85,
+    },
+    {
+        'name': 'facility_booking',
+        'category': 'UTILITY',
+        'status': 'approved',
+        'body': '{{facility}} booked for unit {{unit}} on {{date}} at {{time}}. Manage bookings in the SyndicMS app.',
+        'cost_per_message': 0.85,
+    },
+    {
+        'name': 'visitor_pass',
+        'category': 'UTILITY',
+        'status': 'approved',
+        'body': (
+            'Visitor pass {{pass_code}} for {{visitor_name}} is valid at {{development}} '
+            'on {{date}} until {{expires_at}}. Show this code at the gate.'
+        ),
+        'cost_per_message': 0.85,
+    },
+    {
+        'name': 'general_notice',
+        'category': 'UTILITY',
+        'status': 'approved',
+        'body': '{{development}} notice - {{title}}: {{message}}',
+        'cost_per_message': 0.85,
+    },
+    {
+        'name': 'welcome_onboard',
+        'category': 'MARKETING',
+        'status': 'review',
+        'body': (
+            'Welcome to {{development}}, {{name}}. Your SyndicMS account for unit {{unit}} is ready. '
+            'Sign in at {{app_url}}.'
+        ),
+        'cost_per_message': 1.50,
+    },
+]
 # Shown as a banner on the Onboarding and Subscriptions screens.
 SETUP_FEE_PROMO = {
     'headline': 'Setup Fee: FREE for First 2 Years',

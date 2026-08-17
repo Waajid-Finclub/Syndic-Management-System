@@ -17,7 +17,17 @@ const INTERNAL_API_PORT = "5000";
 
 let csrfToken: string | null = null;
 
+export type ApiResult<T> = {
+  data: T;
+  response: Response;
+  fromCache: boolean;
+};
+
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  return (await apiWithMeta<T>(path, options)).data;
+}
+
+export async function apiWithMeta<T>(path: string, options: ApiOptions = {}): Promise<ApiResult<T>> {
   const requestPath = normalizeApiPath(path);
   const isFormData = options.body instanceof FormData;
   const headers = new Headers(options.headers);
@@ -38,14 +48,14 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   }
 
   if (!response.ok) {
-    const message =
-      typeof payload === "object" && payload && "error" in payload
-        ? String(payload.error)
-        : `Request failed with ${response.status}`;
-    throw new ApiError(message, response.status);
+    throw errorFromPayload(payload, response.status);
   }
 
-  return payload as T;
+  return {
+    data: payload as T,
+    response,
+    fromCache: response.headers.get("x-sms-from-cache") === "1",
+  };
 }
 
 export async function apiBlob(path: string, options: ApiOptions = {}): Promise<Blob> {

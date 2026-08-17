@@ -98,6 +98,55 @@ class WhatsAppStat(db.Model):
         }
 
 
+class WhatsAppMessage(db.Model):
+    """
+    One outbound message, logged when the platform notifies a resident.
+
+    Nothing here talks to Meta. The row records what *would* be sent — template,
+    recipient, rendered body — so the admin console's WhatsApp screen reflects
+    real resident activity rather than a static demo figure, and so a live
+    Business API client can later be dropped in behind the same call site.
+    """
+    __tablename__ = 'whatsapp_messages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    development_id = db.Column(db.Integer, db.ForeignKey('developments.id'), nullable=True, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+
+    template_name = db.Column(db.String(100), nullable=True, index=True)
+    to_number = db.Column(db.String(40), nullable=True)
+    body = db.Column(db.Text, nullable=True)
+    category = db.Column(db.String(40), nullable=False, default='UTILITY')
+    status = db.Column(db.String(30), nullable=False, default='sent', index=True)
+
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    delivered_at = db.Column(db.DateTime, nullable=True)
+
+    development = db.relationship('Development')
+    user = db.relationship('User')
+
+    @property
+    def masked_number(self):
+        """Never echo a full phone number back to a console operator."""
+        if not self.to_number or len(self.to_number) < 4:
+            return self.to_number
+        return f'{self.to_number[:-4]}XXXX'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'development_id': self.development_id,
+            'development_name': self.development.name if self.development else None,
+            'recipient_name': self.user.name if self.user else None,
+            'template_name': self.template_name,
+            'to_number': self.masked_number,
+            'body': self.body,
+            'category': self.category,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class Integration(db.Model):
     __tablename__ = 'integrations'
 

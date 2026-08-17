@@ -2,9 +2,9 @@
 from flask import Blueprint, jsonify, request
 
 from ..extensions import db
-from ..models import FeatureFlag, SubscriptionPlan, User
+from ..models import FeatureFlag, SubscriptionPlan, User, WhatsAppTemplate
 from ..models.audit import record_audit
-from ..seed_data import DEFAULT_FEATURE_FLAGS, DEFAULT_PLANS
+from ..seed_data import DEFAULT_FEATURE_FLAGS, DEFAULT_PLANS, DEFAULT_WHATSAPP_TEMPLATES
 from ..utils.validation import clean_email, clean_string, json_dict
 
 setup_bp = Blueprint('setup', __name__)
@@ -55,3 +55,7 @@ def seed_reference_data():
     if db.session.query(FeatureFlag.id).first() is None:
         for order, flag in enumerate(DEFAULT_FEATURE_FLAGS):
             db.session.add(FeatureFlag(sort_order=order, **flag))
+
+    if db.session.query(WhatsAppTemplate.id).first() is None:
+        for order, template in enumerate(DEFAULT_WHATSAPP_TEMPLATES):
+            db.session.add(WhatsAppTemplate(sort_order=order, **template))

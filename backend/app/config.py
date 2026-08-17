@@ -91,6 +91,11 @@ class Config:
     PLATFORM_CURRENCY = os.environ.get('PLATFORM_CURRENCY', 'MUR')
     PLATFORM_VAT_RATE = float(os.environ.get('PLATFORM_VAT_RATE', 15))
     BUSINESS_TIMEZONE = os.environ.get('BUSINESS_TIMEZONE', 'Indian/Mauritius')
+
+    # Which implementation of services.payment_gateway.PaymentGateway takes
+    # resident payments. 'simulated' authorises without an acquirer; the ledger
+    # it writes is real either way.
+    PAYMENT_GATEWAY = os.environ.get('PAYMENT_GATEWAY', 'simulated')
     APP_PUBLIC_URL = os.environ.get('APP_PUBLIC_URL')
 
     MAX_CONTENT_LENGTH = 10 * 1024 * 1024

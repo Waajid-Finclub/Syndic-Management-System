@@ -1,0 +1,321 @@
+"""
+PDF rendering for invoices and statements of account.
+
+These are documents a co-owner may hand to a bank, an accountant or a lawyer,
+so they carry the full reference set — invoice reference, unit, share
+allocation, issue and due dates — and state their own generation date. They are
+built at request time from live rows rather than stored, so a downloaded copy
+can never be a stale snapshot of a since-corrected invoice.
+
+Layout follows the console's Graphite & Emerald palette so a printed document
+and the screen it came from read as one system.
+"""
+from datetime import date, datetime
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_RIGHT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    KeepTogether,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
+
+GRAPHITE = colors.HexColor('#1f262e')
+EMERALD = colors.HexColor('#047857')
+MUTED = colors.HexColor('#5f6b76')
+HAIRLINE = colors.HexColor('#cbd1d6')
+TINT = colors.HexColor('#f1f3f4')
+DANGER = colors.HexColor('#b91c1c')
+
+_styles = getSampleStyleSheet()
+
+TITLE = ParagraphStyle('smsTitle', parent=_styles['Title'], fontName='Helvetica-Bold',
+                       fontSize=18, textColor=GRAPHITE, alignment=0, spaceAfter=2)
+SUBTITLE = ParagraphStyle('smsSubtitle', parent=_styles['Normal'], fontName='Helvetica',
+                          fontSize=9, textColor=MUTED, spaceAfter=10)
+LABEL = ParagraphStyle('smsLabel', parent=_styles['Normal'], fontName='Helvetica-Bold',
+                       fontSize=7, textColor=MUTED, spaceAfter=1)
+VALUE = ParagraphStyle('smsValue', parent=_styles['Normal'], fontName='Helvetica',
+                       fontSize=9.5, textColor=GRAPHITE)
+SECTION = ParagraphStyle('smsSection', parent=_styles['Normal'], fontName='Helvetica-Bold',
+                         fontSize=8, textColor=MUTED, spaceBefore=10, spaceAfter=5)
+BODY = ParagraphStyle('smsBody', parent=_styles['Normal'], fontName='Helvetica',
+                      fontSize=8.5, textColor=MUTED, leading=12)
+AMOUNT = ParagraphStyle('smsAmount', parent=_styles['Normal'], fontName='Helvetica-Bold',
+                        fontSize=9.5, textColor=GRAPHITE, alignment=TA_RIGHT)
+
+
+def _rs(amount):
+    return f'Rs {float(amount or 0):,.2f}'
+
+
+def _day(value):
+    if value is None:
+        return '-'
+    if isinstance(value, str):
+        try:
+            value = datetime.fromisoformat(value).date()
+        except ValueError:
+            return value
+    return value.strftime('%d %b %Y')
+
+
+def _document(buffer_target, title):
+    return SimpleDocTemplate(
+        buffer_target,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
+        title=title,
+        author='SyndicMS',
+    )
+
+
+def _letterhead(development, heading, reference):
+    left = [
+        Paragraph(development.name if development else 'SyndicMS', TITLE),
+        Paragraph(_address_line(development), SUBTITLE),
+    ]
+    right = Table(
+        [[Paragraph(heading.upper(), LABEL)], [Paragraph(reference, VALUE)]],
+        colWidths=[55 * mm],
+        style=TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ]),
+    )
+    header = Table([[left, right]], colWidths=[110 * mm, 55 * mm])
+    header.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('LINEBELOW', (0, 0), (-1, -1), 1.2, GRAPHITE),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    return header
+
+
+def _address_line(development):
+    if development is None:
+        return 'Syndic Management System'
+    parts = [development.address_line_1, development.city, development.country]
+    return ' · '.join(part for part in parts if part) or 'Mauritius'
+
+
+def _party_block(unit, owner_name):
+    rows = [
+        [Paragraph('BILLED TO', LABEL), Paragraph('UNIT', LABEL), Paragraph('SHARE ALLOCATION', LABEL)],
+        [
+            Paragraph(owner_name or '-', VALUE),
+            Paragraph(f'{unit.label}{f" · {unit.block_name}" if unit.block_name else ""}', VALUE),
+            Paragraph(f'{unit.share_value:,} / {unit.total_shares:,} ({unit.share_percent}%)', VALUE),
+        ],
+    ]
+    table = Table(rows, colWidths=[60 * mm, 45 * mm, 60 * mm])
+    table.setStyle(TableStyle([
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    return table
+
+
+def _footer(canvas, document):
+    canvas.saveState()
+    canvas.setFont('Helvetica', 7)
+    canvas.setFillColor(MUTED)
+    canvas.drawString(
+        18 * mm, 10 * mm,
+        f'Generated by SyndicMS on {date.today().strftime("%d %b %Y")} · '
+        f'This document reflects the account as at the date of generation.',
+    )
+    canvas.drawRightString(192 * mm, 10 * mm, f'Page {canvas.getPageNumber()}')
+    canvas.restoreState()
+
+
+def invoice_pdf(buffer_target, invoice, unit, development, owner_name):
+    document = _document(buffer_target, f'Invoice {invoice.reference}')
+    story = [_letterhead(development, 'Invoice', invoice.reference), Spacer(1, 10)]
+
+    story.append(_party_block(unit, owner_name))
+    story.append(Spacer(1, 8))
+
+    meta = Table(
+        [
+            [Paragraph('ISSUE DATE', LABEL), Paragraph('DUE DATE', LABEL), Paragraph('STATUS', LABEL)],
+            [
+                Paragraph(_day(invoice.issue_date), VALUE),
+                Paragraph(_day(invoice.due_date), VALUE),
+                Paragraph(invoice.display_status.replace('_', ' ').title(), VALUE),
+            ],
+        ],
+        colWidths=[55 * mm, 55 * mm, 55 * mm],
+    )
+    meta.setStyle(TableStyle([
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    story.append(meta)
+
+    story.append(Paragraph(invoice.title, SECTION))
+
+    line_rows = [['Description', 'Qty', 'Rate', 'Amount']]
+    for line in invoice.lines:
+        line_rows.append([
+            Paragraph(line.description, BODY),
+            f'{float(line.quantity or 0):g}',
+            _rs(line.unit_rate),
+            _rs(line.amount),
+        ])
+
+    lines_table = Table(line_rows, colWidths=[86 * mm, 18 * mm, 30 * mm, 32 * mm], repeatRows=1)
+    lines_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), TINT),
+        ('TEXTCOLOR', (0, 0), (-1, 0), MUTED),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8.5),
+        ('TEXTCOLOR', (0, 1), (-1, -1), GRAPHITE),
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LINEBELOW', (0, 0), (-1, -2), 0.4, HAIRLINE),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    story.append(lines_table)
+
+    totals = [
+        ['', 'Total', _rs(invoice.total_amount)],
+        ['', 'Paid', _rs(invoice.amount_paid)],
+        ['', 'Balance due', _rs(invoice.balance)],
+    ]
+    totals_table = Table(totals, colWidths=[104 * mm, 30 * mm, 32 * mm])
+    totals_table.setStyle(TableStyle([
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('FONTNAME', (1, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (1, 0), (-1, -1), 9),
+        ('TEXTCOLOR', (1, 0), (-1, -1), MUTED),
+        ('FONTNAME', (1, 2), (-1, 2), 'Helvetica-Bold'),
+        ('FONTSIZE', (1, 2), (-1, 2), 11),
+        ('TEXTCOLOR', (1, 2), (-1, 2), DANGER if invoice.balance > 0 else EMERALD),
+        ('LINEABOVE', (1, 2), (-1, 2), 0.8, GRAPHITE),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    story.append(totals_table)
+
+    payments = [allocation for allocation in invoice.allocations if allocation.payment]
+    story.append(Paragraph('Payment history', SECTION))
+    if payments:
+        payment_rows = [['Date', 'Reference', 'Method', 'Amount']]
+        for allocation in payments:
+            payment = allocation.payment
+            payment_rows.append([
+                _day(payment.paid_at.date() if payment.paid_at else None),
+                payment.reference,
+                payment.method_label or '-',
+                _rs(allocation.amount),
+            ])
+        payments_table = Table(payment_rows, colWidths=[32 * mm, 38 * mm, 64 * mm, 32 * mm], repeatRows=1)
+        payments_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), TINT),
+            ('TEXTCOLOR', (0, 0), (-1, 0), MUTED),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
+            ('LINEBELOW', (0, 0), (-1, -2), 0.4, HAIRLINE),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(payments_table)
+    else:
+        story.append(Paragraph('No payments have been allocated to this invoice.', BODY))
+
+    document.build(story, onFirstPage=_footer, onLaterPages=_footer)
+    return buffer_target
+
+
+def statement_pdf(buffer_target, statement, unit, development, owner_name):
+    document = _document(buffer_target, 'Statement of account')
+    story = [
+        _letterhead(development, 'Statement of account',
+                    f'{_day(statement["start_date"])} — {_day(statement["end_date"])}'),
+        Spacer(1, 10),
+        _party_block(unit, owner_name),
+        Spacer(1, 8),
+    ]
+
+    balances = Table(
+        [
+            [Paragraph('OPENING BALANCE', LABEL), Paragraph('CLOSING BALANCE', LABEL)],
+            [
+                Paragraph(_rs(statement['opening_balance']), VALUE),
+                Paragraph(_rs(statement['closing_balance']), VALUE),
+            ],
+        ],
+        colWidths=[82 * mm, 82 * mm],
+    )
+    balances.setStyle(TableStyle([
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    story.append(balances)
+    story.append(Paragraph('Movements', SECTION))
+
+    rows = [['Date', 'Reference', 'Description', 'Debit', 'Credit', 'Balance']]
+    for row in statement['rows']:
+        rows.append([
+            _day(row['date']),
+            row['reference'],
+            Paragraph(row['description'], BODY),
+            _rs(row['debit']) if row['debit'] else '',
+            _rs(row['credit']) if row['credit'] else '',
+            _rs(row['balance']),
+        ])
+
+    if len(rows) == 1:
+        story.append(Paragraph('No movements in this period.', BODY))
+    else:
+        movements = Table(
+            rows,
+            colWidths=[22 * mm, 26 * mm, 58 * mm, 22 * mm, 22 * mm, 24 * mm],
+            repeatRows=1,
+        )
+        movements.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), TINT),
+            ('TEXTCOLOR', (0, 0), (-1, 0), MUTED),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 7.5),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('TEXTCOLOR', (0, 1), (-1, -1), GRAPHITE),
+            ('TEXTCOLOR', (3, 1), (3, -1), DANGER),
+            ('TEXTCOLOR', (4, 1), (4, -1), EMERALD),
+            ('FONTNAME', (5, 1), (5, -1), 'Helvetica-Bold'),
+            ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LINEBELOW', (0, 0), (-1, -2), 0.4, HAIRLINE),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(movements)
+
+    story.append(Spacer(1, 10))
+    story.append(KeepTogether(Paragraph(
+        'Amounts shown in Mauritian rupees. Service charges are apportioned by share '
+        'allocation in accordance with the co-ownership regulations.', BODY,
+    )))
+
+    document.build(story, onFirstPage=_footer, onLaterPages=_footer)
+    return buffer_target

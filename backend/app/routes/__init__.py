@@ -6,6 +6,7 @@ from .integrations import integrations_bp
 from .monitoring import monitoring_bp
 from .onboarding import onboarding_bp
 from .overview import overview_bp
+from .resident import resident_bp
 from .setup import setup_bp
 from .subscriptions import subscriptions_bp
 from .users import users_bp
@@ -20,6 +21,7 @@ __all__ = [
     'monitoring_bp',
     'onboarding_bp',
     'overview_bp',
+    'resident_bp',
     'setup_bp',
     'subscriptions_bp',
     'users_bp',

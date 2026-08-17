@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f1f3f4" />
+    <title>Offline — SyndicMS</title>
+    <!--
+      Served by the service worker when a screen is opened with no network and
+      nothing cached for it. Deliberately self-contained: it has to render when
+      by definition nothing else can be fetched.
+    -->
+    <style>
+      :root {
+        --cc: #f1f3f4;
+        --cwh: #ffffff;
+        --clg: #e3e6e8;
+        --cbr: #cbd1d6;
+        --cr: #1f262e;
+        --ct: #16191d;
+        --cmt: #5f6b76;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--cc);
+        color: var(--ct);
+        font-family: "Poppins", "Inter", "Segoe UI", Arial, sans-serif;
+      }
+
+      .panel {
+        width: 100%;
+        max-width: 360px;
+        padding: 26px 22px;
+        border: 1px solid var(--clg);
+        border-radius: 16px;
+        background: var(--cwh);
+        text-align: center;
+      }
+
+      .mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        margin-bottom: 14px;
+        border-radius: 16px;
+        background: var(--cc);
+        color: var(--cmt);
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      p {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--cmt);
+      }
+
+      button {
+        margin-top: 18px;
+        width: 100%;
+        min-height: 46px;
+        padding: 12px 18px;
+        border: 1px solid var(--cr);
+        border-radius: 13px;
+        background: var(--cr);
+        color: #fff;
+        font: inherit;
+        font-size: 13.5px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel">
+      <div class="mark">
+        <svg
+          aria-hidden="true"
+          fill="none"
+          height="24"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          width="24"
+        >
+          <path d="M12 20h.01" />
+          <path d="M8.5 16.429a5 5 0 0 1 7 0" />
+          <path d="M5 12.859a10 10 0 0 1 5.17-2.69" />
+          <path d="M19 12.859a10 10 0 0 0-2.007-1.523" />
+          <path d="M2 8.82a15 15 0 0 1 4.177-2.643" />
+          <path d="M22 8.82a15 15 0 0 0-11.288-3.764" />
+          <path d="m2 2 20 20" />
+        </svg>
+      </div>
+      <h1>You are offline</h1>
+      <p>
+        This screen has not been opened on this device yet, so there is nothing saved to show
+        you. Screens you have already visited still work without a connection.
+      </p>
+      <button onclick="location.reload()" type="button">Try again</button>
+    </div>
+  </body>
+</html>

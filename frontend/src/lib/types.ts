@@ -288,6 +288,78 @@ export type WhatsAppResponse = {
   numbers: WhatsAppNumber[];
 };
 
+/** A template plus what the WhatsApp Centre composer needs to drive it. */
+export type WhatsAppCenterTemplate = WhatsAppTemplate & {
+  placeholders: string[];
+  can_send: boolean;
+};
+
+export type WhatsAppAudience = {
+  key: string;
+  label: string;
+  description: string;
+  roles: string[];
+};
+
+export type WhatsAppRecipient = {
+  id: number;
+  name: string;
+  role_display: string;
+  scope_label: string;
+  phone: string | null;
+  reachable: boolean;
+  reason: string | null;
+};
+
+export type WhatsAppAudienceSummary = {
+  audience: string;
+  label: string;
+  development_id: number | null;
+  in_scope: number;
+  opted_in: number;
+  reachable: number;
+  sample: WhatsAppRecipient[];
+};
+
+export type WhatsAppMessage = {
+  id: number;
+  development_id: number | null;
+  development_name: string | null;
+  recipient_name: string | null;
+  template_name: string | null;
+  to_number: string | null;
+  body: string | null;
+  category: string;
+  status: string;
+  created_at: string | null;
+};
+
+export type WhatsAppCenterResponse = {
+  templates: WhatsAppCenterTemplate[];
+  audiences: WhatsAppAudience[];
+  developments: { id: number; name: string; code: string }[];
+  stats: WhatsAppStats | null;
+  today: { sent: number; failed: number; recipients: number };
+  recent_dispatches: AuditEntry[];
+  max_recipients: number;
+  can_send: boolean;
+};
+
+export type WhatsAppMessagesResponse = {
+  messages: WhatsAppMessage[];
+  total: number;
+};
+
+export type WhatsAppDispatchResult = {
+  template: string;
+  client: string;
+  sent: number;
+  failed: number;
+  cost: number;
+  detail: string;
+  messages: WhatsAppMessage[];
+};
+
 export type Integration = {
   id: number;
   name: string;

@@ -86,6 +86,7 @@ def _register_blueprints(app):
         monitoring_bp,
         onboarding_bp,
         overview_bp,
+        resident_bp,
         setup_bp,
         subscriptions_bp,
         users_bp,
@@ -104,6 +105,7 @@ def _register_blueprints(app):
     app.register_blueprint(audit_bp, url_prefix='/api/audit')
     app.register_blueprint(whatsapp_bp, url_prefix='/api/whatsapp')
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
+    app.register_blueprint(resident_bp, url_prefix='/api/resident')
 
 
 def _register_hooks(app):
