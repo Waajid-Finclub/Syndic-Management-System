@@ -124,9 +124,43 @@ cd frontend
 npm run verify
 ```
 
+
+## Docker / EasyPanel Deployment
+
+This repo ships a Docker Compose setup for EasyPanel:
+
+- `frontend` - Next.js standalone server on port `3000`
+- `backend` - Flask API served by Gunicorn on port `5000` inside the Docker network
+- `db` - MySQL 8.4 with a persistent named volume
+- `backend_instance` - persistent Flask instance/uploads volume
+
+In EasyPanel, create a Compose app from this repository and use `docker-compose.yml`.
+Expose only the `frontend` service, port `3000`. The frontend proxies `/api/*` to `http://backend:5000` through `API_INTERNAL_URL`, so the backend does not need a public route.
+
+Set these environment variables in EasyPanel. Use `.env.docker.example` as the template:
+
+```text
+APP_PUBLIC_URL=https://your-domain.example
+SECRET_KEY=<long-random-secret>
+MYSQL_DATABASE=syndic_ms
+MYSQL_USER=syndic
+MYSQL_PASSWORD=<strong-db-password>
+MYSQL_ROOT_PASSWORD=<strong-root-password>
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SAMESITE=Lax
+```
+
+On first production deploy, open `/setup` and create the first super admin. For a clean demo baseline only, run this one-off command in the backend container:
+
+```sh
+python seed.py --reset
+```
+
+Do not run the reset command against production data you want to keep.
+
 ## Production configuration
 
-Set these before deploying:
+For non-Docker deployments, set these before deploying:
 
 ```text
 APP_ENV=production
@@ -138,7 +172,7 @@ SESSION_COOKIE_SECURE=true
 SESSION_COOKIE_SAMESITE=Lax
 CSRF_ENABLED=true
 SECURITY_HSTS_SECONDS=31536000
-API_INTERNAL_URL=http://127.0.0.1:5000
+API_INTERNAL_URL=http://127.0.0.1:5000  # Docker compose uses http://backend:5000
 ```
 
 The API rejects wildcard CORS while sessions are credentialed, requires a CSRF

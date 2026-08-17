@@ -54,3 +54,5 @@ desktop.ini
 .claude/
 .codex/
 graphify-out/
+.env.docker
+.env.production
