@@ -5,7 +5,14 @@ from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..extensions import db
-from ..permissions import CONSOLE_ROLE_KEYS, ROLE_LABELS, effective_matrix
+from ..permissions import (
+    CONSOLE_ROLE_KEYS,
+    ROLE_LABELS,
+    SYNDIC_ROLE_KEYS,
+    effective_matrix,
+    layer_of,
+    syndic_effective_matrix,
+)
 
 
 class User(UserMixin, db.Model):
@@ -69,8 +76,29 @@ class User(UserMixin, db.Model):
         return ROLE_LABELS.get(self.role, self.role.replace('_', ' ').title())
 
     @property
+    def layer(self):
+        """Which of the three consoles this account signs in to."""
+        return layer_of(self.role)
+
+    @property
     def can_access_console(self):
         return self.role in CONSOLE_ROLE_KEYS and self.status == 'active'
+
+    @property
+    def can_access_syndic(self):
+        """
+        Syndic accounts must name the development they manage.
+
+        A syndic role with no development_id is an unfinished provisioning, not
+        a platform-wide manager: there is no query in that console that is not
+        scoped to one development, so letting such an account in would show it
+        an empty building and invite a support ticket.
+        """
+        return (
+            self.role in SYNDIC_ROLE_KEYS
+            and self.status == 'active'
+            and self.development_id is not None
+        )
 
     @property
     def scope_label(self):
@@ -80,7 +108,7 @@ class User(UserMixin, db.Model):
             return self.development.name
         return 'All'
 
-    def to_dict(self, include_permissions=False):
+    def to_dict(self, include_permissions=False, include_syndic_permissions=False):
         payload = {
             'id': self.id,
             'first_name': self.first_name,
@@ -91,6 +119,7 @@ class User(UserMixin, db.Model):
             'phone': self.phone,
             'role': self.role,
             'role_display': self.role_display,
+            'layer': self.layer,
             'status': self.status,
             'development_id': self.development_id,
             'development_name': self.development.name if self.development else None,
@@ -99,9 +128,12 @@ class User(UserMixin, db.Model):
             'mfa_enabled': self.mfa_enabled,
             'whatsapp_enabled': self.whatsapp_enabled,
             'can_access_console': self.can_access_console,
+            'can_access_syndic': self.can_access_syndic,
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
         if include_permissions:
             payload['permissions'] = effective_matrix(self)
+        if include_syndic_permissions:
+            payload['permissions'] = syndic_effective_matrix(self)
         return payload

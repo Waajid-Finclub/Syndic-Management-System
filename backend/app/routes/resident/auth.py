@@ -3,10 +3,10 @@ Resident authentication — sign in, register against an invitation, sign out.
 
 The session mechanism is the console's: a Flask-Login cookie plus the CSRF
 header enforced app-wide in `security.csrf_protect`. What differs is who is let
-through. This endpoint accepts co-owners and tenants and refuses console
-accounts; `/api/auth/login` does the exact opposite. Neither is a subset of the
-other, so an operator cannot drift into a resident session and a resident
-cannot reach the console by finding a different login form.
+through. This endpoint accepts co-owners and refuses operator and syndic
+accounts; `/api/auth/login` and `/api/syndic/auth/login` refuse co-owners. No
+two of the three overlap, so nobody reaches another layer by finding a
+different login form.
 
 Registration is invitation-only (see models/resident.Invitation). Verification
 is deliberately vague about *why* a code failed — a precise error tells an
@@ -24,7 +24,7 @@ from flask_login import current_user, login_user, logout_user
 from ...extensions import db
 from ...models import Invitation, ResidentPreference, User
 from ...models.audit import record_audit
-from ...models.property import UnitOwnership, UnitTenancy
+from ...models.property import UnitOwnership
 from ...permissions import RESIDENT_ROLE_KEYS, resident_features
 from ...services.notifications import unread_count
 from ...utils.validation import clean_email, clean_string, json_dict
@@ -141,7 +141,7 @@ def register():
         last_name=last_name or invitation.last_name,
         email=email,
         phone=phone or invitation.phone,
-        role=invitation.role,
+        role='co_owner',
         status='active',
         development_id=invitation.development_id,
         unit_label=invitation.unit.label if invitation.unit else None,
@@ -231,20 +231,16 @@ def _match_invitation(code, email):
 
 
 def _link_to_unit(user, invitation):
-    """Attach the new account to its unit as an owner or a tenant."""
-    today = _utcnow().date()
-    if invitation.role == 'co_owner':
-        db.session.add(UnitOwnership(
-            unit_id=invitation.unit_id,
-            user_id=user.id,
-            ownership_percent=100,
-            is_primary_contact=True,
-            start_date=today,
-        ))
-    else:
-        db.session.add(UnitTenancy(
-            unit_id=invitation.unit_id,
-            user_id=user.id,
-            lease_start_date=today,
-            is_current=True,
-        ))
+    """
+    Attach the new account to its unit as an owner.
+
+    The invitation may already carry the share split the syndic agreed for a
+    jointly held unit; absent that it is a sole holding.
+    """
+    db.session.add(UnitOwnership(
+        unit_id=invitation.unit_id,
+        user_id=user.id,
+        ownership_percent=invitation.ownership_percent or 100,
+        is_primary_contact=invitation.is_primary_contact,
+        start_date=_utcnow().date(),
+    ))

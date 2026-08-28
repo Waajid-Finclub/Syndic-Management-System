@@ -55,6 +55,11 @@ class Invoice(db.Model):
 
     status = db.Column(db.String(30), nullable=False, default='issued', index=True)
 
+    # Set when the invoice came out of a billing run rather than being raised by
+    # hand. Cancelling a run voids exactly these rows and leaves manual invoices
+    # for the same month untouched.
+    billing_run_id = db.Column(db.Integer, db.ForeignKey('billing_runs.id'), nullable=True, index=True)
+
     dispute_reason = db.Column(db.Text, nullable=True)
     disputed_at = db.Column(db.DateTime, nullable=True)
 
@@ -124,6 +129,7 @@ class Invoice(db.Model):
             'is_overdue': self.is_overdue,
             'unit_id': self.unit_id,
             'unit_label': self.unit.label if self.unit else None,
+            'billing_run_id': self.billing_run_id,
             'dispute_reason': self.dispute_reason,
             'disputed_at': self.disputed_at.isoformat() if self.disputed_at else None,
         }

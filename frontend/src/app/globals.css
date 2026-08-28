@@ -1061,7 +1061,16 @@ a {
 .pill--go_live,
 .pill--premium,
 .pill--sent,
-.pill--delivered {
+.pill--delivered,
+.pill--accepted,
+.pill--confirmed,
+.pill--resolved,
+.pill--closed,
+.pill--passed,
+.pill--balanced,
+.pill--allocated,
+.pill--issued_run,
+.pill--complete {
   background: var(--lt-ok);
   color: var(--ok);
 }
@@ -1072,7 +1081,13 @@ a {
 .pill--data_import,
 .pill--review,
 .pill--manual,
-.pill--queued {
+.pill--queued,
+.pill--part_paid,
+.pill--in_progress,
+.pill--acknowledged,
+.pill--urgent,
+.pill--voting_open,
+.pill--available {
   background: var(--lt-wn);
   color: var(--wn);
 }
@@ -1083,7 +1098,12 @@ a {
 .pill--blocked,
 .pill--error,
 .pill--super_admin,
-.pill--failed {
+.pill--failed,
+.pill--emergency,
+.pill--revoked,
+.pill--refunded,
+.pill--disputed,
+.pill--unbalanced {
   background: var(--lt-er);
   color: var(--er);
 }
@@ -1092,13 +1112,20 @@ a {
 .pill--contracted,
 .pill--silver,
 .pill--platform_admin,
-.pill--on_demand {
+.pill--on_demand,
+.pill--syndic_manager,
+.pill--assigned,
+.pill--scheduled,
+.pill--open {
   background: var(--lt-blu);
   color: var(--blu);
 }
 
 .pill--uat,
-.pill--auditor {
+.pill--auditor,
+.pill--board_member,
+.pill--voting_closed,
+.pill--held {
   background: var(--lt-vio);
   color: var(--vio);
 }
@@ -1109,13 +1136,21 @@ a {
 .pill--inactive,
 .pill--basic,
 .pill--off,
-.pill--disabled {
+.pill--disabled,
+.pill--low,
+.pill--normal,
+.pill--expired,
+.pill--cancelled,
+.pill--abstain {
   background: var(--cbg);
   color: var(--cmt);
 }
 
-.pill--tenant,
-.pill--support_user {
+.pill--co_owner,
+.pill--support_user,
+.pill--finance_officer,
+.pill--assistant_manager,
+.pill--accepted_job {
   background: var(--lt-tl);
   color: var(--tl);
 }
@@ -1668,6 +1703,19 @@ a {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* Icon variant of the dot, for feeds whose rows carry a type rather than a
+   severity - meetings, notices, timeline entries. */
+.alert-row__icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+  background: var(--cc);
+  color: var(--cr);
 }
 
 .alert-row__message {
@@ -2255,5 +2303,435 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .select-pop {
     animation: none;
+  }
+}
+
+
+/* ==========================================================================
+   Syndic Admin console (layer 2)
+   ==========================================================================
+
+   Everything here is additive to the shared design system. The syndic console
+   reuses the operator console's sidebar, tables, cards and pills wholesale;
+   these are the few pieces that exist only in a client-facing workspace. */
+
+/* A platform operator working inside a client's console. Deliberately loud and
+   deliberately not dismissible: forgetting you are in someone else's data is
+   the failure mode this banner exists to prevent. */
+.support-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 28px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(146, 64, 14, 0.28);
+  background: var(--lt-wn);
+  color: var(--wn);
+}
+
+.support-banner__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.support-banner__copy strong {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.support-banner__copy span {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.support-banner__end {
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(146, 64, 14, 0.35);
+  background: var(--cwh);
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--wn);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.support-banner__end:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* The share allocation meter. A development's shares must sum to 10,000; this
+   is the one number the registry screen never lets out of sight, because an
+   unbalanced total silently corrupts every vote and every apportionment. */
+.share-meter {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--cbr);
+  background: var(--cwh);
+}
+
+.share-meter__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+}
+
+.share-meter__label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--cmt);
+}
+
+.share-meter__value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--cr);
+  font-variant-numeric: tabular-nums;
+}
+
+.share-meter__track {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--clg);
+  overflow: hidden;
+}
+
+.share-meter__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--cg2), var(--cg));
+  transition: width 0.3s ease;
+}
+
+.share-meter__fill--over {
+  background: linear-gradient(90deg, #b91c1c, #ef4444);
+}
+
+/* Two-column detail layout used by the unit, invoice and request drawers. */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px 20px;
+}
+
+.detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.detail-field__label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--cmt);
+}
+
+.detail-field__value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ct);
+  overflow-wrap: anywhere;
+}
+
+/* The maintenance timeline, mirroring what the co-owner sees in the app so a
+   manager on the phone is describing the same seven steps. */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline__step {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 14px;
+  position: relative;
+}
+
+.timeline__step:last-child {
+  padding-bottom: 0;
+}
+
+.timeline__step::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 20px;
+  bottom: 0;
+  width: 2px;
+  background: var(--clg);
+}
+
+.timeline__step:last-child::before {
+  display: none;
+}
+
+.timeline__dot {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid var(--cbr);
+  background: var(--cwh);
+  display: grid;
+  place-items: center;
+  color: var(--cwh);
+}
+
+.timeline__dot.is-done {
+  border-color: var(--cg2);
+  background: var(--cg2);
+}
+
+.timeline__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.timeline__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ct);
+}
+
+.timeline__step:not(.is-done) .timeline__label {
+  color: var(--cmtl);
+}
+
+.timeline__meta {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cmt);
+}
+
+/* A message thread between the office, the co-owner and the vendor. */
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.thread__message {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--cbr);
+  background: var(--cwh);
+  padding: 10px 12px;
+}
+
+.thread__message--syndic {
+  background: var(--lt-blu);
+  border-color: rgba(30, 58, 138, 0.18);
+}
+
+.thread__author {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cmt);
+  margin-bottom: 4px;
+}
+
+.thread__body {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--ct);
+  overflow-wrap: anywhere;
+}
+
+/* Seat allowance meter on the Team screen. */
+.seat-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.seat-pip {
+  width: 26px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--clg);
+}
+
+.seat-pip.is-used {
+  background: var(--cr);
+}
+
+/* Row of aging buckets on the arrears screen. */
+.bucket-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.bucket {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--cbr);
+  background: var(--cwh);
+  padding: 11px 13px;
+}
+
+.bucket__label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cmt);
+}
+
+.bucket__value {
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--cr);
+  font-variant-numeric: tabular-nums;
+}
+
+.bucket__sub {
+  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cmt);
+}
+
+.bucket--warn .bucket__value {
+  color: var(--wn);
+}
+
+.bucket--danger .bucket__value {
+  color: var(--er);
+}
+
+/* Vote tally bar: for / against / abstain, weighted by shares. */
+.tally {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--clg);
+}
+
+.tally__for {
+  background: var(--ok);
+}
+
+.tally__against {
+  background: var(--er);
+}
+
+.tally__abstain {
+  background: var(--cmtl);
+}
+
+.tally-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cmt);
+}
+
+.tally-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tally-legend__swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+/* Import report: a validated CSV row list, errors first. */
+.import-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--clg);
+  font-size: 12px;
+}
+
+.import-row:last-child {
+  border-bottom: none;
+}
+
+.import-row__num {
+  flex-shrink: 0;
+  width: 44px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cmtl);
+  font-variant-numeric: tabular-nums;
+}
+
+.import-row__body {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  color: var(--ct);
+  overflow-wrap: anywhere;
+}
+
+.import-row--error .import-row__body {
+  color: var(--er);
+  font-weight: 500;
+}
+
+/* A wide, quiet code display — invitation codes and visitor passes, which get
+   read aloud over the phone as often as they get copied. */
+.code-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--radius-xs);
+  border: 1px dashed var(--cbr);
+  background: var(--cc);
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--cr);
+}
+
+@media (max-width: 900px) {
+  .support-banner {
+    margin: 12px 16px 0;
+    flex-wrap: wrap;
   }
 }

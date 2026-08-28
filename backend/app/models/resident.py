@@ -1,11 +1,16 @@
 """
 Resident account models — invitations, preferences and the notification feed.
 
-Registration is invitation-only. A syndic manager creates an Invitation against
-a specific unit and email; the resident signs up with the code, and the account
-that results is bound to that unit. There is no open sign-up, because an account
-here can read a co-owner's financial history and cast a vote weighted by their
-shares — self-service registration would be a way in.
+Registration is invitation-only. A syndic admin creates an Invitation against
+a specific unit and email; the co-owner signs up with the code, and the account
+that results is bound to that unit with the share split the invitation names.
+There is no open sign-up, because an account here can read a co-owner's
+financial history and cast a vote weighted by their shares — self-service
+registration would be a way in.
+
+This is the layer 2 to layer 3 handoff. A syndic allocates co-owner accounts
+exactly as the platform operator allocates syndic accounts one level up: named,
+scoped, revocable, and recorded in the audit log at both ends.
 
 Invitation codes are single-use, expiring, generated with `secrets`, and
 compared in constant time. Failed attempts are counted so a code cannot be
@@ -50,6 +55,15 @@ class Invitation(db.Model):
     first_name = db.Column(db.String(100), nullable=True)
     last_name = db.Column(db.String(100), nullable=True)
     phone = db.Column(db.String(50), nullable=True)
+
+    # The ownership terms the account inherits on acceptance. A jointly held
+    # unit is invited twice with the split agreed between the holders; the
+    # primary contact is who the syndic writes to about the unit.
+    ownership_percent = db.Column(db.Numeric(8, 4), nullable=False, default=100)
+    is_primary_contact = db.Column(db.Boolean, nullable=False, default=True)
+
+    invited_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    invited_by_label = db.Column(db.String(150), nullable=True)
 
     status = db.Column(db.String(30), nullable=False, default='pending', index=True)
     attempts = db.Column(db.Integer, nullable=False, default=0)
@@ -98,6 +112,16 @@ class Invitation(db.Model):
             'development_name': self.development.name if self.development else None,
             'first_name': self.first_name,
             'last_name': self.last_name,
+            'phone': self.phone,
+            'ownership_percent': float(self.ownership_percent or 0),
+            'is_primary_contact': self.is_primary_contact,
+            'invited_by_label': self.invited_by_label,
+            'code': self.code,
+            'attempts': self.attempts,
+            'is_expired': self.is_expired,
+            'is_usable': self.is_usable,
+            'accepted_at': self.accepted_at.isoformat() if self.accepted_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,
         }
 

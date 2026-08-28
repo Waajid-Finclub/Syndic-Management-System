@@ -9,6 +9,7 @@ from .billing import (
     PaymentAllocation,
     PaymentMethod,
 )
+from .billing_run import BillingRun
 from .community import (
     Announcement,
     Document,
@@ -52,6 +53,7 @@ __all__ = [
     'Announcement',
     'ApiKey',
     'AuditLog',
+    'BillingRun',
     'Block',
     'Development',
     'DevelopmentFund',

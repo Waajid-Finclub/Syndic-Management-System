@@ -80,8 +80,10 @@ def _register_blueprints(app):
     from .routes import (
         audit_bp,
         auth_bp,
+        client_admins_bp,
         developments_bp,
         feature_flags_bp,
+        impersonation_bp,
         integrations_bp,
         monitoring_bp,
         onboarding_bp,
@@ -89,6 +91,7 @@ def _register_blueprints(app):
         resident_bp,
         setup_bp,
         subscriptions_bp,
+        syndic_bp,
         users_bp,
         whatsapp_bp,
     )
@@ -105,6 +108,11 @@ def _register_blueprints(app):
     app.register_blueprint(audit_bp, url_prefix='/api/audit')
     app.register_blueprint(whatsapp_bp, url_prefix='/api/whatsapp')
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
+    app.register_blueprint(client_admins_bp, url_prefix='/api/client-admins')
+    app.register_blueprint(impersonation_bp, url_prefix='/api/impersonate')
+
+    # The three consoles, each with its own login surface and role family.
+    app.register_blueprint(syndic_bp, url_prefix='/api/syndic')
     app.register_blueprint(resident_bp, url_prefix='/api/resident')
 
 

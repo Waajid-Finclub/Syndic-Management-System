@@ -41,8 +41,10 @@ from app.models import MaintenanceRequest, User  # noqa: E402
 RESIDENT_PASSWORD = 'ResidentApp2026!'
 ADMIN_PASSWORD = 'AdminConsole2026!'
 OWNER = 'coowner@syndicms.mu'
-TENANT = 'tenant@syndicms.mu'
+OWNER_UNIT = 'A-101'
 CONSOLE = 'admin@syndicms.mu'
+SYNDIC = 'manager@syndicms.mu'
+SYNDIC_PASSWORD = 'SyndicAdmin2026!'
 
 passed = 0
 failures = []
@@ -98,18 +100,20 @@ def main():
     check('co-owner signs in', response.status_code == 200, response.get_json())
     owner_session = response.get_json() or {}
     owner_features = ((owner_session.get('user') or {}).get('features') or {})
-    check('co-owner session carries starter unit', owner_session.get('unit', {}).get('label') == 'OWNER-1')
+    check('co-owner session carries starter unit',
+          owner_session.get('unit', {}).get('label') == OWNER_UNIT)
     check('co-owner keeps finance and voting features',
           owner_features.get('finance') is True and owner_features.get('voting') is True)
 
-    tenant = Session(app)
-    response = tenant.login(TENANT)
-    check('tenant signs in', response.status_code == 200, response.get_json())
-    tenant_session = response.get_json() or {}
-    tenant_features = ((tenant_session.get('user') or {}).get('features') or {})
-    check('tenant session carries starter unit', tenant_session.get('unit', {}).get('label') == 'TENANT-1')
-    check('tenant has no finance or voting',
-          tenant_features.get('finance') is False and tenant_features.get('voting') is False)
+    # Layer 3 is co-owners only: a syndic admin account is refused here, and a
+    # co-owner is refused at the syndic login. Neither login is a subset of the
+    # other, which is what keeps the two consoles apart.
+    syndic_on_app = Session(app).login(SYNDIC, password=SYNDIC_PASSWORD)
+    check('resident app rejects a syndic admin account', syndic_on_app.status_code == 403,
+          syndic_on_app.get_json())
+    owner_on_syndic = Session(app).login(OWNER, endpoint='/api/syndic/auth/login')
+    check('syndic console rejects a co-owner account', owner_on_syndic.status_code == 403,
+          owner_on_syndic.get_json())
 
     admin = Session(app)
     console_login = admin.login(CONSOLE, password=ADMIN_PASSWORD, endpoint='/api/auth/login')
@@ -152,10 +156,11 @@ def main():
           any(development.get('code') == 'STARTER' for development in center_payload.get('developments', [])),
           center_payload.get('developments'))
 
-    audience = admin.get('/api/whatsapp/audience?audience=all_residents')
+    audience = admin.get('/api/whatsapp/audience?audience=co_owners')
     audience_payload = audience.get_json() or {}
-    check('resident audience preview loads', audience.status_code == 200, audience_payload)
-    check('starter owner and tenant are reachable', audience_payload.get('reachable') == 2, audience_payload)
+    check('co-owner audience preview loads', audience.status_code == 200, audience_payload)
+    check('the starter co-owner is reachable', audience_payload.get('reachable') == 1,
+          audience_payload)
 
     general_notice = next((template for template in center_templates if template.get('name') == 'general_notice'), None)
     check('general notice template exists', general_notice is not None)
@@ -209,7 +214,8 @@ def main():
     meta = owner.get('/api/resident/maintenance/meta').get_json() or {}
     categories = meta.get('categories') or []
     check('maintenance metadata loads', len(categories) > 0)
-    check('starter unit appears in locations', any('OWNER-1' in item for item in meta.get('locations', [])))
+    check('starter unit appears in locations',
+          any(OWNER_UNIT in item for item in meta.get('locations', [])))
 
     created = owner.post('/api/resident/maintenance', {
         'category': categories[0]['key'] if categories else 'plumbing',
@@ -243,10 +249,15 @@ def main():
     check('one notification from the created maintenance request exists', notifications.get('unread') == 1,
           notifications)
 
-    print('\nTenant boundaries')
-    check('tenant cannot read finance', tenant.get('/api/resident/finance/summary').status_code == 403)
-    check('tenant cannot cast a vote',
-          tenant.post('/api/resident/governance/resolutions/1/vote', {'choice': 'for'}).status_code == 403)
+    print('\nLayer boundaries')
+    # A signed-in co-owner reaching either console gets 403 from that console's
+    # own guard, not a redirect - the API is the boundary, not the navigation.
+    check('co-owner cannot read the syndic overview',
+          owner.get('/api/syndic/overview').status_code == 403)
+    check('co-owner cannot read the platform registry',
+          owner.get('/api/developments/').status_code == 403)
+    check('co-owner cannot fetch an invoice that is not theirs',
+          owner.get('/api/resident/finance/invoices/999999').status_code == 404)
 
     with app.app_context():
         created_count = MaintenanceRequest.query.filter_by(title='Fresh baseline smoke request').count()

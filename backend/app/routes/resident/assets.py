@@ -6,7 +6,8 @@ office does, because allocation is a term of the co-ownership. Charging
 sessions are likewise reported by the charger, not the app, so there is no
 endpoint here to invent one.
 
-Available to tenants: whoever lives there parks there.
+Bays and stores follow the unit, so this reads from the unit rather than
+from the account.
 """
 from datetime import date, datetime
 

@@ -5,10 +5,10 @@ Seed a fresh SyndicMS local database.
 Run: python seed.py            (adds baseline rows to an empty database)
      python seed.py --reset    (drops every table first)
 
-The seed intentionally avoids demo portfolio or resident activity data. It
-keeps only the account credentials needed to sign in as each supported console
-and resident app role, plus the platform reference catalogs and WhatsApp Centre
-configuration.
+The seed intentionally avoids demo portfolio or resident activity data. It keeps
+only what is needed to sign in at each of the three layers — master admin,
+syndic admin, co-owner — plus the platform reference catalogs and WhatsApp
+Centre configuration.
 """
 import sys
 from datetime import date
@@ -30,8 +30,9 @@ from seed_resident import (
     OWNER_EMAIL,
     OWNER_UNIT,
     RESIDENT_PASSWORD,
-    TENANT_EMAIL,
-    TENANT_UNIT,
+    SYNDIC_PASSWORD,
+    SYNDIC_USERS,
+    VACANT_UNIT,
     seed_resident_domain,
 )
 
@@ -118,16 +119,21 @@ def report(resident):
     print(f'  Feature flags      {FeatureFlag.query.count()}')
     print(f'  WhatsApp templates {WhatsAppTemplate.query.count()}')
 
-    print('\nAdmin console credentials:')
+    print('\nMaster admin console credentials  (/login):')
     for _first, _last, email, role, _mfa in CONSOLE_USERS:
-        print(f'  {role:<15} {email} / {ADMIN_PASSWORD}')
-
-    print('\nResident app credentials:')
-    print(f'  co_owner        {OWNER_EMAIL} / {RESIDENT_PASSWORD}  (unit {OWNER_UNIT})')
-    print(f'  tenant          {TENANT_EMAIL} / {RESIDENT_PASSWORD}  (unit {TENANT_UNIT})')
+        print(f'  {role:<18} {email} / {ADMIN_PASSWORD}')
 
     development = resident['development']
-    print(f'\nResident starter scope: {development.name} ({development.code})')
+
+    print(f'\nSyndic admin console credentials  (/syndic/login, scoped to {development.name}):')
+    for _first, _last, email, role in SYNDIC_USERS:
+        print(f'  {role:<18} {email} / {SYNDIC_PASSWORD}')
+
+    print('\nCo-owner app credentials  (/app/login):')
+    print(f'  co_owner           {OWNER_EMAIL} / {RESIDENT_PASSWORD}  (unit {OWNER_UNIT})')
+
+    print(f'\nStarter client: {development.name} ({development.code})')
+    print(f'  Unit {VACANT_UNIT} is left unallocated so the co-owner invitation flow has a target.')
     print('No demo invoices, payments, maintenance, votes, bookings, visitors, documents, or notifications were seeded.\n')
 
 

@@ -1,9 +1,9 @@
 """
 Maintenance — report an issue, follow it, talk to the vendor.
 
-Available to tenants as well as co-owners: the person who notices the leak is
-whoever lives there, and making a renter phone the owner to report a burst pipe
-is how small problems become expensive ones.
+The one write path a co-owner reaches without touching money or a vote, so it
+is also the busiest: a burst pipe reported late is how a small problem becomes
+an expensive one.
 
 A request accepts photos on creation as multipart, or JSON with photos added
 afterwards. Images are validated by MIME type and size in services/storage and

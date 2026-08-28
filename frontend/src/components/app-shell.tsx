@@ -19,6 +19,7 @@ import {
   ScrollText,
   Search,
   ShieldCheck,
+  UserCog,
   Users,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -52,6 +53,7 @@ const navSections: NavSection[] = [
     title: "Administration",
     sub: "Access and commercials",
     items: [
+      { href: "/client-admins", label: "Client Admins", icon: UserCog, module: "users" },
       { href: "/users", label: "Users & Roles", icon: Users, module: "users" },
       { href: "/subscriptions", label: "Subscriptions", icon: CreditCard, module: "subscriptions" },
       { href: "/feature-flags", label: "Feature Flags", icon: Flag, module: "feature_flags" },

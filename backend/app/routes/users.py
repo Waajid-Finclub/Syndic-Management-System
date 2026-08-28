@@ -1,4 +1,19 @@
-"""User registry routes — every account across the platform."""
+"""
+User registry — every account across all three layers, read from layer 1.
+
+The operator can *see* every account here, and administer the ones that belong
+to this console. Accounts one and two layers down are created where their own
+allocation rules live, and this route refuses to create them:
+
+* Syndic admin accounts go through /api/client-admins, which enforces the
+  subscription's seat allowance. Creating one here would let an operator hand a
+  client an eleventh seat on a ten-seat plan.
+* Co-owner accounts are never created by anyone — they are invited, from the
+  syndic console, against a specific unit. See routes/syndic/co_owners.
+
+Editing and suspending still work here for every layer, because support has to
+be able to lock an account out from one place.
+"""
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 
@@ -10,7 +25,9 @@ from ..permissions import (
     MANAGED_ROLES,
     MANAGED_ROLE_KEYS,
     ROLE_LABELS,
+    SYNDIC_ROLE_KEYS,
     ensure,
+    layer_of,
     normalize_matrix,
 )
 from ..utils.validation import as_bool, as_int, clean_email, clean_string, json_dict, one_of
@@ -60,10 +77,30 @@ def list_users():
             'count': User.query.filter(User.role == entry['key']).count(),
         })
 
+    layer_counts = {}
+    for entry in MANAGED_ROLES:
+        layer = layer_of(entry['key'])
+        bucket = layer_counts.setdefault(layer, {'layer': layer, 'count': 0, 'roles': []})
+        bucket['count'] += next(
+            (row['count'] for row in role_counts if row['role'] == entry['key']), 0,
+        )
+        bucket['roles'].append(entry['key'])
+
     return jsonify({
         'users': [user.to_dict() for user in users],
         'role_counts': role_counts,
         'roles': MANAGED_ROLES,
+        'layers': [
+            {**layer_counts[key], 'label': label}
+            for key, label in (
+                ('master', 'Master Admin'),
+                ('syndic', 'Syndic Admin'),
+                ('resident', 'Co-Owner'),
+            )
+            if key in layer_counts
+        ],
+        # Where an account of each layer is actually created.
+        'creatable_here': CONSOLE_ROLE_KEYS,
     })
 
 
@@ -82,9 +119,20 @@ def create_user():
 
     if not first_name or not email or not role:
         return jsonify({'error': 'First name, a valid email and a role are required'}), 400
+    if role in SYNDIC_ROLE_KEYS:
+        return jsonify({
+            'error': 'Syndic admin accounts are provisioned per client so the subscription '
+                     'seat allowance is enforced. Use Client Admins.',
+            'redirect': '/client-admins',
+        }), 400
+    if role not in CONSOLE_ROLE_KEYS:
+        return jsonify({
+            'error': 'Co-owner accounts are invited from the syndic console against a '
+                     'specific unit, never created here.',
+        }), 400
     if role == 'super_admin' and not _is_super_admin():
         return jsonify({'error': 'Only a super admin can create another super admin'}), 403
-    if role in CONSOLE_ROLE_KEYS and not password:
+    if not password:
         return jsonify({'error': 'Console accounts need a password'}), 400
     if password and len(password) < 10:
         return jsonify({'error': 'Password must be at least 10 characters'}), 400
@@ -138,6 +186,13 @@ def update_user(uid):
             return jsonify({'error': 'That role is not recognised'}), 400
         if (role == 'super_admin' or user.role == 'super_admin') and not _is_super_admin():
             return jsonify({'error': 'Only a super admin can change super admin accounts'}), 403
+        if layer_of(role) != layer_of(user.role):
+            # Moving an account between layers would carry its history across a
+            # boundary the whole permission model rests on.
+            return jsonify({
+                'error': f'An account cannot move from the {layer_of(user.role)} layer to the '
+                         f'{layer_of(role)} layer. Create a separate account instead.',
+            }), 400
         if user.role == 'super_admin' and role != 'super_admin' and _active_super_admins() <= 1:
             return jsonify({'error': 'The last active super admin cannot be demoted'}), 409
         user.role = role

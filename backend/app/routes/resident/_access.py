@@ -3,23 +3,23 @@ Access control for the resident API.
 
 Two independent checks guard every endpoint here:
 
-1. `@resident_required` — the caller is an active co-owner or tenant. Console
+1. `@resident_required` — the caller is an active co-owner. Console and syndic
    accounts are refused even though they are authenticated, exactly as resident
-   accounts are refused at the console login.
+   accounts are refused at both console logins.
 2. The unit. Every read and write is scoped to the caller's own unit, resolved
-   from ownership or tenancy records rather than taken from the request. A
-   resident cannot ask for someone else's invoice because there is nowhere in
-   the API to name one.
+   from the ownership record rather than taken from the request. A resident
+   cannot ask for someone else's invoice because there is nowhere in the API to
+   name one.
 
-`@feature_required` adds the co-owner/tenant split on top: a tenant reaching a
-finance or voting endpoint gets 403 from the same table that hides the tab.
+`@feature_required` reads the same RESIDENT_FEATURES table the tab bar reads, so
+a screen that is hidden is also refused rather than merely unlinked.
 """
 from functools import wraps
 
 from flask import g, jsonify
 from flask_login import current_user
 
-from ...models.property import Unit, UnitOwnership, UnitTenancy
+from ...models.property import Unit, UnitOwnership
 from ...permissions import RESIDENT_FEATURES, RESIDENT_ROLE_KEYS, resident_features
 
 FEATURE_LABELS = {feature['key']: feature['label'] for feature in RESIDENT_FEATURES}
@@ -66,7 +66,7 @@ def feature_required(feature):
 
 def resident_unit(user=None):
     """
-    The unit this account occupies, from ownership (co-owner) or lease (tenant).
+    The unit this account owns.
 
     Cached per request: almost every endpoint needs it, and it is stable for the
     life of a request.
@@ -76,19 +76,11 @@ def resident_unit(user=None):
     if cached is not None and cached.get('user_id') == user.id:
         return cached['unit']
 
-    unit = None
-    if user.role == 'co_owner':
-        ownership = UnitOwnership.query.filter(
-            UnitOwnership.user_id == user.id,
-            UnitOwnership.end_date.is_(None),
-        ).first()
-        unit = ownership.unit if ownership else None
-    elif user.role == 'tenant':
-        tenancy = UnitTenancy.query.filter(
-            UnitTenancy.user_id == user.id,
-            UnitTenancy.is_current.is_(True),
-        ).first()
-        unit = tenancy.unit if tenancy else None
+    ownership = UnitOwnership.query.filter(
+        UnitOwnership.user_id == user.id,
+        UnitOwnership.end_date.is_(None),
+    ).first()
+    unit = ownership.unit if ownership else None
 
     g._resident_unit = {'user_id': user.id, 'unit': unit}
     return unit
@@ -115,7 +107,7 @@ def development_of(unit):
 
 
 def owns_unit(unit, user=None):
-    """True when the caller holds title to the unit rather than renting it."""
+    """True when the caller holds title to this particular unit."""
     user = user or current_user
     if unit is None or user.role != 'co_owner':
         return False
@@ -144,7 +136,7 @@ def unit_payload(unit, user=None):
             'name': development.name,
             'location': development.location,
         } if development else None,
-        'tenure': 'owner' if user.role == 'co_owner' else 'tenant',
+        'tenure': 'owner',
     }
 
 

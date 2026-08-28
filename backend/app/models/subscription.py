@@ -17,6 +17,11 @@ class SubscriptionPlan(db.Model):
     monthly_unit_rate = db.Column(db.Numeric(12, 2), nullable=False, default=100)
     vat_rate = db.Column(db.Numeric(5, 2), nullable=False, default=15)
     setup_fee_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+
+    # How many Syndic Admin logins the plan entitles a client to. The platform
+    # operator provisions the first one; the client's manager fills the rest.
+    admin_seats = db.Column(db.Integer, nullable=False, default=2)
+
     features = db.Column(db.JSON, nullable=True)
     is_popular = db.Column(db.Boolean, nullable=False, default=False)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
@@ -44,6 +49,7 @@ class SubscriptionPlan(db.Model):
             'vat_rate': float(self.vat_rate or 0),
             'rate_incl_vat': self.rate_incl_vat,
             'setup_fee_amount': float(self.setup_fee_amount or 0),
+            'admin_seats': self.admin_seats,
             'features': self.features or [],
             'is_popular': self.is_popular,
             'is_active': self.is_active,
@@ -64,6 +70,10 @@ class Subscription(db.Model):
     vat_rate = db.Column(db.Numeric(5, 2), nullable=False, default=15)
     active_units_count = db.Column(db.Integer, nullable=False, default=0)
 
+    # NULL means "inherit the plan's allowance". A negotiated deal sets it here
+    # so changing the plan catalog never silently rewrites a signed contract.
+    admin_seats_override = db.Column(db.Integer, nullable=True)
+
     status = db.Column(db.String(30), nullable=False, default='trial', index=True)
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
@@ -73,6 +83,13 @@ class Subscription(db.Model):
 
     invoices = db.relationship('SubscriptionInvoice', backref='subscription',
                                cascade='all, delete-orphan', order_by='SubscriptionInvoice.id.desc()')
+
+    @property
+    def admin_seats(self):
+        """Syndic Admin logins this client may hold, override winning over plan."""
+        if self.admin_seats_override is not None:
+            return int(self.admin_seats_override)
+        return int(self.plan.admin_seats) if self.plan else 0
 
     @property
     def mrr(self):
@@ -95,6 +112,8 @@ class Subscription(db.Model):
             'monthly_unit_rate': float(self.monthly_unit_rate or 0),
             'vat_rate': float(self.vat_rate or 0),
             'active_units_count': self.active_units_count,
+            'admin_seats': self.admin_seats,
+            'admin_seats_override': self.admin_seats_override,
             'mrr': self.mrr,
             'mrr_incl_vat': self.mrr_incl_vat,
             'status': self.status,

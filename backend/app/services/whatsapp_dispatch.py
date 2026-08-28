@@ -27,20 +27,18 @@ from ..models import User, WhatsAppMessage, WhatsAppStat
 
 # --- Audiences -------------------------------------------------------------
 #
-# Who a console operator may address. The role split matters: service charges
-# and votes are the owner's business, so a tenant never receives them.
+# Who a console operator may address. Audiences follow the account layers: the
+# operator can reach a client's admin team or the co-owners under them, and
+# nothing else holds a login on this platform.
 
 AUDIENCES = [
-    {'key': 'all_residents', 'label': 'All residents', 'roles': ['co_owner', 'tenant'],
-     'description': 'Every co-owner and tenant in scope'},
     {'key': 'co_owners', 'label': 'Co-owners', 'roles': ['co_owner'],
-     'description': 'Owners only — charges, arrears, votes'},
-    {'key': 'tenants', 'label': 'Tenants', 'roles': ['tenant'],
-     'description': 'Renters only — no finance or voting content'},
-    {'key': 'syndic_team', 'label': 'Syndic team', 'roles': ['syndic_manager', 'finance_officer'],
-     'description': 'Managers and finance officers on the ground'},
-    {'key': 'contractors', 'label': 'Contractors', 'roles': ['contractor'],
-     'description': 'Vendors holding assigned work orders'},
+     'description': 'Owners in scope — charges, arrears, votes, notices'},
+    {'key': 'syndic_team', 'label': 'Syndic admin team',
+     'roles': ['syndic_manager', 'finance_officer', 'assistant_manager'],
+     'description': "The client's own managers and finance officers"},
+    {'key': 'board_members', 'label': 'Board members', 'roles': ['board_member'],
+     'description': 'Committee members holding governance oversight'},
 ]
 AUDIENCE_KEYS = [a['key'] for a in AUDIENCES]
 AUDIENCE_ROLES = {a['key']: a['roles'] for a in AUDIENCES}

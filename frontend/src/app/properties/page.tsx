@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, Download, Loader2, Plus, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Building2, Download, LifeBuoy, Loader2, Plus, Search } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
@@ -38,6 +39,7 @@ const TYPE_OPTIONS = [
 ];
 
 export default function PropertiesPage() {
+  const router = useRouter();
   const [status, setStatus] = useState("all");
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
@@ -45,6 +47,26 @@ export default function PropertiesPage() {
   const session = useApi<{ user: User | null }>("/api/auth/me");
   const registry = useApi<DevelopmentListResponse>(`/api/developments?status=${status}`);
   const user = session.data?.user ?? null;
+  const [supportError, setSupportError] = useState<string | null>(null);
+
+  /**
+   * Open a client's own syndic console for support.
+   *
+   * The session stays the operator's; only the scope changes. Start, stop and
+   * every write in between are written to that client's audit log, so a client
+   * reading their own trail can see support was in.
+   */
+  async function openClientConsole(developmentId: number) {
+    setSupportError(null);
+    try {
+      const response = await api<{ redirect: string }>(`/api/impersonate/${developmentId}`, {
+        method: "POST",
+      });
+      router.push(response.redirect);
+    } catch (err) {
+      setSupportError(err instanceof Error ? err.message : "Could not open the client console");
+    }
+  }
 
   const rows = useMemo(() => {
     const developments = registry.data?.developments ?? [];
@@ -93,6 +115,7 @@ export default function PropertiesPage() {
       />
 
       {registry.error ? <div className="notice notice--er">{registry.error}</div> : null}
+      {supportError ? <div className="notice notice--er">{supportError}</div> : null}
 
       <Tabs active={status} items={tabs} onChange={setStatus} />
 
@@ -143,6 +166,7 @@ export default function PropertiesPage() {
                   <th>Status</th>
                   <th className="right">MRR</th>
                   <th>Since</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -164,18 +188,31 @@ export default function PropertiesPage() {
                     </td>
                     <td className="right mono bold">{compactMoney(development.mrr)}</td>
                     <td>{development.launch_date ? formatMonthYear(development.launch_date) : "-"}</td>
+                    <td className="right">
+                      {user?.role === "super_admin" ? (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => openClientConsole(development.id)}
+                          title="Open this client's syndic console for support"
+                          type="button"
+                        >
+                          <LifeBuoy size={12} />
+                          Support
+                        </button>
+                      ) : null}
+                    </td>
                   </tr>
                 ))}
                 {registry.loading && !rows.length ? (
                   <tr>
-                    <td className="empty-cell" colSpan={12}>
+                    <td className="empty-cell" colSpan={13}>
                       Loading properties...
                     </td>
                   </tr>
                 ) : null}
                 {!registry.loading && !rows.length ? (
                   <tr>
-                    <td className="empty-cell" colSpan={12}>
+                    <td className="empty-cell" colSpan={13}>
                       No properties match this view
                     </td>
                   </tr>

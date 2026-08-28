@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-Minimal resident seed for a fresh local system.
+Minimal client seed for a fresh local system.
 
-This keeps the resident PWA sign-in paths usable without repopulating fake
-financial, maintenance, governance, visitor, document, parking, storage or
-notification data. The only resident-domain rows created are a starter
-development, two units, and one login account per resident role.
+Creates one starter development with the account chain of all three layers
+intact — a syndic admin team on layer 2 and a co-owner on layer 3 — without
+repopulating fake financial, maintenance, governance, visitor, document,
+parking, storage or notification data.
+
+The second unit is deliberately left unowned so the co-owner allocation flow in
+the syndic console has something to allocate on a fresh install.
 """
 from datetime import date
 from decimal import Decimal
@@ -16,25 +19,35 @@ from app.models import (
     Development,
     DevelopmentSettings,
     ResidentPreference,
+    Subscription,
+    SubscriptionPlan,
     Unit,
     UnitOwnership,
-    UnitTenancy,
     User,
 )
 
 RESIDENT_PASSWORD = 'ResidentApp2026!'
+SYNDIC_PASSWORD = 'SyndicAdmin2026!'
 
 DEVELOPMENT_CODE = 'STARTER'
 DEVELOPMENT_NAME = 'Starter Residence'
 
 OWNER_EMAIL = 'coowner@syndicms.mu'
-TENANT_EMAIL = 'tenant@syndicms.mu'
-OWNER_UNIT = 'OWNER-1'
-TENANT_UNIT = 'TENANT-1'
+OWNER_UNIT = 'A-101'
+VACANT_UNIT = 'A-102'
+
+# One login per layer 2 role, so every branch of the syndic permission matrix
+# can be exercised without provisioning accounts by hand first.
+SYNDIC_USERS = [
+    ('Syndic', 'Manager', 'manager@syndicms.mu', 'syndic_manager'),
+    ('Finance', 'Officer', 'finance@syndicms.mu', 'finance_officer'),
+    ('Assistant', 'Manager', 'assistant@syndicms.mu', 'assistant_manager'),
+    ('Board', 'Member', 'board@syndicms.mu', 'board_member'),
+]
 
 
 def seed_resident_domain():
-    """Create the minimum resident data required for owner and tenant logins."""
+    """Create the starter development and one login for each layer below the operator."""
     development = Development(
         code=DEVELOPMENT_CODE,
         name=DEVELOPMENT_NAME,
@@ -42,18 +55,22 @@ def seed_resident_domain():
         city='',
         district='',
         country='Mauritius',
-        status='draft',
-        pipeline_stage='prospect',
+        status='active',
+        pipeline_stage='go_live',
+        syndic_manager_name='Syndic Manager',
+        syndic_manager_email='manager@syndicms.mu',
         unit_count=2,
         parking_count=0,
         ev_parking_count=0,
         storage_count=0,
         facility_count=0,
-        user_count=2,
+        user_count=5,
         whatsapp_enabled=True,
     )
     db.session.add(development)
     db.session.flush()
+
+    _attach_subscription(development)
 
     db.session.add(DevelopmentSettings(
         development_id=development.id,
@@ -65,58 +82,94 @@ def seed_resident_domain():
     db.session.add(block)
     db.session.flush()
 
-    owner_unit = Unit(
-        development_id=development.id,
-        block_id=block.id,
-        label=OWNER_UNIT,
-        unit_type='T2',
-        floor=1,
-        area_sqm=Decimal('0.00'),
-        share_value=1,
-        monthly_charge=Decimal('0.00'),
-    )
-    tenant_unit = Unit(
-        development_id=development.id,
-        block_id=block.id,
-        label=TENANT_UNIT,
-        unit_type='T2',
-        floor=1,
-        area_sqm=Decimal('0.00'),
-        share_value=1,
-        monthly_charge=Decimal('0.00'),
-    )
-    db.session.add_all([owner_unit, tenant_unit])
+    # Shares sum to the 10,000 the registry reconciles against, so the syndic
+    # console opens on a balanced development rather than a warning.
+    owner_unit = _unit(development, block, OWNER_UNIT, share_value=5000)
+    vacant_unit = _unit(development, block, VACANT_UNIT, share_value=5000)
+    db.session.add_all([owner_unit, vacant_unit])
     db.session.flush()
 
-    owner = _resident_user('Co-owner', 'Login', OWNER_EMAIL, 'co_owner', development, OWNER_UNIT, '+230 5000 0101')
-    tenant = _resident_user('Tenant', 'Login', TENANT_EMAIL, 'tenant', development, TENANT_UNIT, '+230 5000 0102')
+    syndic_team = [
+        _console_user(first, last, email, role, development, SYNDIC_PASSWORD)
+        for first, last, email, role in SYNDIC_USERS
+    ]
+
+    owner = _resident_user('Co-owner', 'Login', OWNER_EMAIL, 'co_owner', development,
+                           OWNER_UNIT, '+230 5000 0101')
     db.session.flush()
 
-    today = date.today()
     db.session.add(UnitOwnership(
         unit_id=owner_unit.id,
         user_id=owner.id,
         ownership_percent=Decimal('100.0000'),
         is_primary_contact=True,
-        start_date=today,
-    ))
-    db.session.add(UnitTenancy(
-        unit_id=tenant_unit.id,
-        user_id=tenant.id,
-        lease_start_date=today,
-        is_current=True,
+        start_date=date.today(),
     ))
     db.session.add(ResidentPreference(user_id=owner.id, push_notifications=True))
-    db.session.add(ResidentPreference(user_id=tenant.id, push_notifications=True))
     db.session.flush()
 
     return {
         'development': development,
         'owner': owner,
-        'tenant': tenant,
+        'syndic_team': syndic_team,
         'owner_unit': owner_unit,
-        'tenant_unit': tenant_unit,
+        'vacant_unit': vacant_unit,
     }
+
+
+def _attach_subscription(development):
+    """
+    Put the starter client on a plan.
+
+    Without one the client has no admin seat allowance, and the seat check in
+    the syndic Team screen would refuse every account on a fresh install.
+    """
+    plan = SubscriptionPlan.query.filter_by(code='premium').first() or SubscriptionPlan.query.first()
+    if plan is None:
+        return None
+    subscription = Subscription(
+        development_id=development.id,
+        plan_id=plan.id,
+        setup_fee_amount=plan.setup_fee_amount,
+        monthly_unit_rate=plan.monthly_unit_rate,
+        vat_rate=plan.vat_rate,
+        active_units_count=2,
+        status='active',
+        start_date=date.today(),
+    )
+    db.session.add(subscription)
+    db.session.flush()
+    return subscription
+
+
+def _unit(development, block, label, share_value):
+    return Unit(
+        development_id=development.id,
+        block_id=block.id,
+        label=label,
+        unit_type='T2',
+        floor=1,
+        area_sqm=Decimal('0.00'),
+        share_value=share_value,
+        monthly_charge=Decimal('0.00'),
+    )
+
+
+def _console_user(first_name, last_name, email, role, development, password):
+    """A layer 2 account: scoped to one development, signs in at /syndic."""
+    user = User(
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        role=role,
+        status='active',
+        development_id=development.id,
+        mfa_enabled=True,
+        whatsapp_enabled=False,
+    )
+    user.set_password(password)
+    db.session.add(user)
+    return user
 
 
 def _resident_user(first_name, last_name, email, role, development, unit_label, phone):

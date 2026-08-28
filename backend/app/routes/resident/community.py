@@ -377,7 +377,7 @@ def document_file(document_id):
     if document is None:
         return jsonify({'error': 'Document not found'}), 404
 
-    # Private paperwork belongs to one unit, and to owners rather than tenants.
+    # Private paperwork belongs to one unit and is invisible to every other.
     if document.unit_id is not None:
         if document.unit_id != unit.id or current_user.role != 'co_owner':
             return jsonify({'error': 'Document not found'}), 404

@@ -91,7 +91,7 @@ def _latest_announcement(development_id):
 
 
 def _kpis(unit, features):
-    """The four tiles. Governance and finance tiles drop out for tenants."""
+    """The four tiles on the home screen."""
     tiles = {}
 
     if features.get('finance'):

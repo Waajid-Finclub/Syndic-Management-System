@@ -155,24 +155,46 @@ class UnitOwnership(db.Model):
 
 
 class UnitTenancy(db.Model):
-    """Links a tenant to a unit for the duration of a lease."""
+    """
+    Who occupies a unit that its owner does not live in.
+
+    This is an occupancy record, not an account. Logins on this platform belong
+    to co-owners: service charges are the owner's liability and votes follow the
+    owner's title, so a renter has nothing to sign in to. The syndic still needs
+    to know who is behind the door for maintenance access, gate passes and an
+    evacuation list, and that is what these rows are for. `user_id` stays
+    nullable for the rare case where an occupant also holds a unit of their own.
+    """
     __tablename__ = 'unit_tenancies'
 
     id = db.Column(db.Integer, primary_key=True)
     unit_id = db.Column(db.Integer, db.ForeignKey('units.id'), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+
+    occupant_name = db.Column(db.String(150), nullable=True)
+    occupant_email = db.Column(db.String(255), nullable=True)
+    occupant_phone = db.Column(db.String(50), nullable=True)
+
     lease_start_date = db.Column(db.Date, nullable=True)
     lease_end_date = db.Column(db.Date, nullable=True)
     is_current = db.Column(db.Boolean, nullable=False, default=True)
 
     user = db.relationship('User')
 
+    @property
+    def display_name(self):
+        return self.occupant_name or (self.user.name if self.user else 'Occupant')
+
     def to_dict(self):
         return {
             'id': self.id,
             'unit_id': self.unit_id,
+            'unit_label': self.unit.label if self.unit else None,
             'user_id': self.user_id,
-            'user_name': self.user.name if self.user else None,
+            'user_name': self.display_name,
+            'occupant_name': self.occupant_name,
+            'occupant_email': self.occupant_email,
+            'occupant_phone': self.occupant_phone,
             'lease_start_date': self.lease_start_date.isoformat() if self.lease_start_date else None,
             'lease_end_date': self.lease_end_date.isoformat() if self.lease_end_date else None,
             'is_current': self.is_current,
