@@ -108,24 +108,18 @@ python seed.py --reset
 This resets the local database to a clean baseline. It does not create demo
 portfolio, invoice, payment, maintenance, voting, visitor, document, WhatsApp message history,
 monitoring, or revenue-history rows. It keeps the plan/feature reference catalog,
-one starter resident scope, and one login for each supported role. The WhatsApp Centre starts with the approved template catalog and a sandbox connected number.
+one starter resident scope, and exactly one login per layer. The WhatsApp Centre starts with the approved template catalog and a sandbox connected number.
 
 Master admin console — `/login`:
 
 ```text
-super_admin     admin@syndicms.mu / AdminConsole2026!
-platform_admin  platform@syndicms.mu / AdminConsole2026!
-support_user    support@syndicms.mu / AdminConsole2026!
-auditor         auditor@syndicms.mu / AdminConsole2026!
+super_admin  admin@syndicms.mu / AdminConsole2026!
 ```
 
 Syndic admin console — `/syndic/login`, all scoped to Starter Residence:
 
 ```text
-syndic_manager     manager@syndicms.mu / SyndicAdmin2026!
-finance_officer    finance@syndicms.mu / SyndicAdmin2026!
-assistant_manager  assistant@syndicms.mu / SyndicAdmin2026!
-board_member       board@syndicms.mu / SyndicAdmin2026!
+syndic_manager  manager@syndicms.mu / SyndicAdmin2026!
 ```
 
 Co-owner app — `/app/login`:
@@ -255,16 +249,17 @@ The root image runs both services in one container:
 - `frontend` - Next.js standalone server on port `3000`
 - `backend` - Flask API served by Gunicorn on `127.0.0.1:5000` inside the same container
 
-Expose container port `3000` and make the EasyPanel domain destination `http://bms_v1-syndic:3000/`. `FRONTEND_PORT=3000` intentionally overrides EasyPanel's injected `PORT` value so the app and domain target stay aligned. Point the domain `https://syndic.blocwise.net` at path `/`. The frontend proxies `/api/*` to `http://127.0.0.1:5000`, so the backend does not need a public route.
+Expose container port `3000` and make the EasyPanel domain destination `http://bms_v1-syndic:3000/`. `FRONTEND_PORT=3000` intentionally overrides EasyPanel's injected `PORT` value so the app and domain target stay aligned. Point the domain `https://staging.blocwise.net` at path `/`. The frontend proxies `/api/*` to `http://127.0.0.1:5000`, so the backend does not need a public route.
 
 Set these environment variables in EasyPanel. Use `.env.easypanel.example` as the committed template and `.env.easypanel` as the local ignored copy:
 
 ```text
-APP_PUBLIC_URL=https://syndic.blocwise.net
-CORS_ORIGINS=https://syndic.blocwise.net
+APP_PUBLIC_URL=https://staging.blocwise.net
+CORS_ORIGINS=https://staging.blocwise.net
 FRONTEND_PORT=3000
 SECRET_KEY=<long-random-secret>
 DATABASE_URL=mysql://mysql:<db-password>@bms_v1_syndic-db:3306/bms_v1
+RESET_DATABASE_ON_STARTUP=true
 SESSION_COOKIE_SECURE=true
 SESSION_COOKIE_SAMESITE=Lax
 PAYMENT_GATEWAY=simulated
@@ -273,6 +268,8 @@ API_REQUEST_DEBUG=false
 ```
 
 Important: `DATABASE_URL` must end with `/bms_v1`. Remove any trailing `+` from the EasyPanel value before deploying.
+
+For staging refreshes, keep `RESET_DATABASE_ON_STARTUP=true` in the EasyPanel app environment. Each EasyPanel redeploy/start runs `python seed.py --reset` before the server starts, so the database is dropped and rebuilt with only the three baseline login accounts. Set it to `false` before using a database you want to keep.
 
 The database values from EasyPanel are:
 

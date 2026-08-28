@@ -40,9 +40,6 @@ ADMIN_PASSWORD = 'AdminConsole2026!'
 
 CONSOLE_USERS = [
     ('Platform', 'Admin', 'admin@syndicms.mu', 'super_admin', True),
-    ('Platform', 'Operator', 'platform@syndicms.mu', 'platform_admin', True),
-    ('Support', 'User', 'support@syndicms.mu', 'support_user', False),
-    ('Audit', 'User', 'auditor@syndicms.mu', 'auditor', True),
 ]
 
 

@@ -3,7 +3,7 @@
 Minimal client seed for a fresh local system.
 
 Creates one starter development with the account chain of all three layers
-intact — a syndic admin team on layer 2 and a co-owner on layer 3 — without
+intact — one syndic manager on layer 2 and one co-owner on layer 3 — without
 repopulating fake financial, maintenance, governance, visitor, document,
 parking, storage or notification data.
 
@@ -36,18 +36,14 @@ OWNER_EMAIL = 'coowner@syndicms.mu'
 OWNER_UNIT = 'A-101'
 VACANT_UNIT = 'A-102'
 
-# One login per layer 2 role, so every branch of the syndic permission matrix
-# can be exercised without provisioning accounts by hand first.
+# The fresh baseline has exactly one layer 2 account: the client's manager.
 SYNDIC_USERS = [
     ('Syndic', 'Manager', 'manager@syndicms.mu', 'syndic_manager'),
-    ('Finance', 'Officer', 'finance@syndicms.mu', 'finance_officer'),
-    ('Assistant', 'Manager', 'assistant@syndicms.mu', 'assistant_manager'),
-    ('Board', 'Member', 'board@syndicms.mu', 'board_member'),
 ]
 
 
 def seed_resident_domain():
-    """Create the starter development and one login for each layer below the operator."""
+    """Create the starter development, one syndic login, and one co-owner login."""
     development = Development(
         code=DEVELOPMENT_CODE,
         name=DEVELOPMENT_NAME,
@@ -64,7 +60,7 @@ def seed_resident_domain():
         ev_parking_count=0,
         storage_count=0,
         facility_count=0,
-        user_count=5,
+        user_count=3,
         whatsapp_enabled=True,
     )
     db.session.add(development)

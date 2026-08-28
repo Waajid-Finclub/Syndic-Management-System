@@ -9,6 +9,7 @@ Run against a fresh baseline:
 
 What it proves, in order:
 
+0. The fresh baseline contains only the three login accounts used for staging access.
 1. Layer isolation — each of the three login endpoints accepts only its own
    layer's accounts and refuses the other two.
 2. The allocation chain — an operator provisions a client admin against the
@@ -30,6 +31,15 @@ from app.models import Development, Subscription, SubscriptionPlan, Unit, User  
 
 PASSED = []
 FAILED = []
+
+BASELINE_EMAILS = {
+    'admin@syndicms.mu',
+    'manager@syndicms.mu',
+    'coowner@syndicms.mu',
+}
+TEST_FINANCE_EMAIL = 'provisioned.officer@example.test'
+TEST_BOARD_EMAIL = 'provisioned.board@example.test'
+TEST_ADMIN_PASSWORD = 'ProvisionTest2026!'
 
 
 def check(name, condition, detail=''):
@@ -75,6 +85,9 @@ def main():
             print('No baseline found. Run `python seed.py --reset` first.')
             return 1
 
+        print('\n0. Seeded accounts')
+        test_seeded_accounts()
+
         print('\n1. Layer isolation')
         test_layer_isolation(app)
 
@@ -94,6 +107,12 @@ def main():
     for name, detail in FAILED:
         print(f'  - {name}: {detail}')
     return 1 if FAILED else 0
+
+
+def test_seeded_accounts():
+    emails = {email for (email,) in db.session.query(User.email).all()}
+    check('fresh baseline seeds only the three login accounts',
+          emails == BASELINE_EMAILS, str(sorted(emails)))
 
 
 def test_layer_isolation(app):
@@ -131,9 +150,9 @@ def test_provisioning(app):
     created = session.post(f'/api/client-admins/{development_id}', {
         'first_name': 'Provisioned',
         'last_name': 'Officer',
-        'email': 'provisioned.officer@example.test',
+        'email': TEST_FINANCE_EMAIL,
         'role': 'finance_officer',
-        'password': 'ProvisionTest2026!',
+        'password': TEST_ADMIN_PASSWORD,
     })
     check('operator provisions a second admin', created.status_code == 201,
           str(created.get_json())[:160])
@@ -151,7 +170,7 @@ def test_provisioning(app):
         'last_name': 'Cap',
         'email': 'over.cap@example.test',
         'role': 'assistant_manager',
-        'password': 'ProvisionTest2026!',
+        'password': TEST_ADMIN_PASSWORD,
     })
     check('seat cap refuses an extra account', blocked.status_code == 409,
           str(blocked.get_json())[:160])
@@ -170,14 +189,23 @@ def test_provisioning(app):
         'first_name': 'Direct',
         'email': 'direct.syndic@example.test',
         'role': 'syndic_manager',
-        'password': 'ProvisionTest2026!',
+        'password': TEST_ADMIN_PASSWORD,
         'development_id': development_id,
     })
     check('operator cannot bypass the seat check via /api/users',
           refused_syndic.status_code == 400, str(refused_syndic.get_json())[:160])
 
-    # Restore headroom for the rest of the run.
+    # Restore headroom for the permission-matrix checks below.
     session.patch(f'/api/client-admins/{development_id}/seats', {'admin_seats': None})
+    board = session.post(f'/api/client-admins/{development_id}', {
+        'first_name': 'Provisioned',
+        'last_name': 'Board',
+        'email': TEST_BOARD_EMAIL,
+        'role': 'board_member',
+        'password': TEST_ADMIN_PASSWORD,
+    })
+    check('operator provisions a board member for permission checks', board.status_code == 201,
+          str(board.get_json())[:160])
     return development_id
 
 
@@ -223,7 +251,7 @@ def test_scoping(app):
     # Read-only roles must be refused writes by the matrix, not by the UI.
     board = Session(app)
     board.post('/api/syndic/auth/login',
-               {'email': 'board@syndicms.mu', 'password': 'SyndicAdmin2026!'})
+               {'email': TEST_BOARD_EMAIL, 'password': TEST_ADMIN_PASSWORD})
     denied = board.post('/api/syndic/registry/units', {'label': 'X-1', 'share_value': 0})
     check('board member cannot create a unit', denied.status_code == 403,
           f'got {denied.status_code}')
@@ -233,7 +261,7 @@ def test_scoping(app):
 
     finance = Session(app)
     finance.post('/api/syndic/auth/login',
-                 {'email': 'finance@syndicms.mu', 'password': 'SyndicAdmin2026!'})
+                 {'email': TEST_FINANCE_EMAIL, 'password': TEST_ADMIN_PASSWORD})
     denied_meeting = finance.post('/api/syndic/governance/meetings',
                                   {'title': 'X', 'scheduled_for': '2026-12-01T10:00'})
     check('finance officer cannot call a meeting', denied_meeting.status_code == 403,
