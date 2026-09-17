@@ -83,7 +83,7 @@ export default function FinanceScreen() {
 
       {account ? (
         <>
-          <Card accent>
+          <Card accent className="r-card--balance">
             <div className="r-label">Account balance</div>
             <Balance
               amount={account.outstanding}

@@ -236,6 +236,31 @@
   box-shadow: 0 2px 14px rgba(var(--shadow-rgb), 0.05);
 }
 
+.r-card--balance {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--cr) 35%, transparent);
+  box-shadow: 0 8px 24px rgba(var(--shadow-rgb), 0.08);
+  animation: r-balance-card-pulse 3.2s ease-in-out infinite;
+}
+
+.r-card--balance::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 34%,
+    color-mix(in srgb, var(--cr) 18%, transparent) 50%,
+    transparent 66%,
+    transparent 100%
+  );
+  transform: translateX(-120%);
+  animation: r-balance-card-sheen 4s ease-in-out infinite;
+}
+
 .r-card--tap {
   cursor: pointer;
   text-align: left;
@@ -260,12 +285,14 @@
   display: flex;
   align-items: baseline;
   gap: 2px;
-  margin: 5px 0 8px;
-  font-size: 33px;
-  font-weight: 700;
-  letter-spacing: -0.035em;
+  margin: 6px 0 9px;
+  font-size: 37px;
+  font-weight: 850;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
   color: var(--ct);
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--cwh) 80%, transparent);
 }
 
 .r-balance--due {
@@ -277,16 +304,16 @@
 }
 
 .r-balance__cents {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 750;
   color: var(--cmtl);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .r-balance__currency {
   margin-right: 4px;
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 750;
   color: var(--cmt);
   letter-spacing: 0;
 }
@@ -1349,8 +1376,35 @@ a.r-row:active {
   to { background-position: -20% 0; }
 }
 
+@keyframes r-balance-card-pulse {
+  0%,
+  100% {
+    box-shadow: 0 8px 24px rgba(var(--shadow-rgb), 0.08);
+  }
+  50% {
+    box-shadow: 0 12px 30px rgba(var(--shadow-rgb), 0.14);
+  }
+}
+
+@keyframes r-balance-card-sheen {
+  0% {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  42%,
+  100% {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .r-skeleton {
+  .r-skeleton,
+  .r-card--balance,
+  .r-card--balance::after {
     animation: none;
   }
 

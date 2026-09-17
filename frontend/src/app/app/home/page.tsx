@@ -202,7 +202,7 @@ function BalanceCard({ summary }: { summary: NonNullable<Dashboard["account"]> }
   const settled = summary.outstanding <= 0;
 
   return (
-    <Card accent>
+    <Card accent className="r-card--balance">
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
         <div style={{ minWidth: 0 }}>
           <div className="r-label">Service charges due</div>

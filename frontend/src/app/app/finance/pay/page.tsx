@@ -101,7 +101,7 @@ export default function PayScreen() {
 
       {account && account.outstanding > 0 ? (
         <>
-          <Card accent>
+          <Card accent className="r-card--balance">
             <div style={{ textAlign: "center" }}>
               <div className="r-label">Amount to pay</div>
               <div style={{ display: "flex", justifyContent: "center" }}>
