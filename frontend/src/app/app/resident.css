@@ -1570,3 +1570,87 @@ a.r-row:active {
   font-size: 11px;
   color: var(--cmt);
 }
+
+.r-install-modal {
+  display: grid;
+  gap: 14px;
+}
+
+.r-install-modal__hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid var(--clg);
+  border-radius: var(--radius);
+  background: var(--cwh);
+}
+
+.r-install-modal__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--tint);
+  color: var(--ct);
+}
+
+.r-install-modal__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ct);
+}
+
+.r-install-modal__sub,
+.r-install-modal__copy {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--cmt);
+}
+
+.r-install-modal__sub {
+  margin-top: 2px;
+}
+
+.r-install-modal__copy {
+  padding: 12px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--cwh);
+}
+
+.r-install-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.r-install-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--clg);
+  border-radius: var(--radius-sm);
+  background: var(--cwh);
+  color: var(--ct);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.r-install-steps__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: var(--cc);
+  color: var(--ct);
+  font-weight: 800;
+}

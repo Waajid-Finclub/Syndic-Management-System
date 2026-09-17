@@ -32,7 +32,6 @@ import {
   Zap,
 } from "lucide-react";
 import { ResolvedIcon, toneForCategory } from "@/components/resident/icons";
-import { InstallPrompt } from "@/components/resident/shell";
 import {
   Balance,
   Card,
@@ -93,7 +92,6 @@ export default function HomeScreen() {
 
         {data ? (
           <>
-            <InstallPrompt />
             {stale ? <StaleDataNotice /> : null}
 
             {data.account ? <BalanceCard summary={data.account} /> : <TenantCard />}
