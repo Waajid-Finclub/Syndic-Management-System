@@ -21,7 +21,7 @@
  * unsafe methods go straight to the network and the UI blocks them offline.
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL_CACHE = `sms-resident-shell-${VERSION}`;
 const DATA_CACHE = `sms-resident-data-${VERSION}`;
 const STATIC_CACHE = `sms-resident-static-${VERSION}`;
@@ -76,7 +76,7 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname.startsWith("/api/resident/")) {
     if (isUncacheable(url.pathname)) return;
-    event.respondWith(staleWhileRevalidate(request, DATA_CACHE));
+    event.respondWith(networkFirst(request, DATA_CACHE));
     return;
   }
 
@@ -115,30 +115,22 @@ async function handleNavigation(request) {
 }
 
 /**
- * Answer from cache immediately, then refresh in the background.
+ * Fetch from the network first and use a cache only after a network failure.
  *
  * The header carries `x-sms-from-cache` so a screen can tell the resident it is
  * looking at the last figure received rather than the current one — showing a
  * stale balance as though it were live is how someone underpays.
  */
-async function staleWhileRevalidate(request, cacheName) {
+async function networkFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
-
-  const network = fetch(request)
-    .then((response) => {
-      if (response.ok) cache.put(request, response.clone());
-      return response;
-    })
-    .catch(() => null);
-
-  if (cached) {
-    void network;
-    return withCacheMarker(cached);
+  try {
+    const response = await fetch(request);
+    if (response.ok) await cache.put(request, response.clone());
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return withCacheMarker(cached);
   }
-
-  const response = await network;
-  if (response) return response;
 
   return new Response(JSON.stringify({ error: "You are offline and this has not been loaded yet." }), {
     status: 503,
