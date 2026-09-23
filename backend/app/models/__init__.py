@@ -1,5 +1,16 @@
 """SQLAlchemy models — import all models here so they are registered with the ORM."""
 from .audit import AuditLog
+from .accounting import (
+    BankAccount,
+    BankTransaction,
+    ChartAccount,
+    Expense,
+    FinancialImportBatch,
+    JournalEntry,
+    JournalLine,
+)
+from .financial_document import FinancialDocument
+from .financial_budget import FinancialBudgetLine
 from .billing import (
     DevelopmentFund,
     EvChargingSession,

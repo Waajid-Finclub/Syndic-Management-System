@@ -35,6 +35,10 @@ from ..utils.validation import as_bool, as_int, clean_email, clean_string, json_
 users_bp = Blueprint('users', __name__)
 
 USER_STATUSES = ['active', 'suspended', 'invited', 'inactive']
+PLATFORM_DIRECTORY_ROLE_KEYS = ('super_admin', 'syndic_manager')
+PLATFORM_DIRECTORY_ROLES = [
+    entry for entry in MANAGED_ROLES if entry['key'] in PLATFORM_DIRECTORY_ROLE_KEYS
+]
 
 
 def _is_super_admin():
@@ -48,9 +52,14 @@ def list_users():
     if denied:
         return denied
 
-    query = User.query
+    query = User.query.filter(User.role.in_(PLATFORM_DIRECTORY_ROLE_KEYS))
     role = clean_string(request.args.get('role'))
     if role and role != 'all':
+        if role not in PLATFORM_DIRECTORY_ROLE_KEYS:
+            return jsonify({
+                'users': [], 'role_counts': [], 'roles': PLATFORM_DIRECTORY_ROLES,
+                'layers': [], 'creatable_here': ['super_admin'],
+            })
         query = query.filter(User.role == role)
 
     development_id = as_int(request.args.get('development_id'))
@@ -69,7 +78,7 @@ def list_users():
     users = query.order_by(User.first_name, User.last_name).all()
 
     role_counts = []
-    for entry in MANAGED_ROLES:
+    for entry in PLATFORM_DIRECTORY_ROLES:
         role_counts.append({
             'role': entry['key'],
             'label': entry['label'],
@@ -78,7 +87,7 @@ def list_users():
         })
 
     layer_counts = {}
-    for entry in MANAGED_ROLES:
+    for entry in PLATFORM_DIRECTORY_ROLES:
         layer = layer_of(entry['key'])
         bucket = layer_counts.setdefault(layer, {'layer': layer, 'count': 0, 'roles': []})
         bucket['count'] += next(
@@ -89,18 +98,17 @@ def list_users():
     return jsonify({
         'users': [user.to_dict() for user in users],
         'role_counts': role_counts,
-        'roles': MANAGED_ROLES,
+        'roles': PLATFORM_DIRECTORY_ROLES,
         'layers': [
             {**layer_counts[key], 'label': label}
             for key, label in (
-                ('master', 'Master Admin'),
-                ('syndic', 'Syndic Admin'),
-                ('resident', 'Co-Owner'),
+                ('master', 'SyndicMS platform'),
+                ('syndic', 'Client syndic'),
             )
             if key in layer_counts
         ],
         # Where an account of each layer is actually created.
-        'creatable_here': CONSOLE_ROLE_KEYS,
+        'creatable_here': ['super_admin'],
     })
 
 
@@ -176,6 +184,8 @@ def update_user(uid):
     user = db.session.get(User, uid)
     if user is None:
         return jsonify({'error': 'User not found'}), 404
+    if user.role not in PLATFORM_DIRECTORY_ROLE_KEYS:
+        return jsonify({'error': 'This account is managed from its development console'}), 404
 
     payload = json_dict(request)
     previous_role = user.role
@@ -261,6 +271,8 @@ def delete_user(uid):
     user = db.session.get(User, uid)
     if user is None:
         return jsonify({'error': 'User not found'}), 404
+    if user.role not in PLATFORM_DIRECTORY_ROLE_KEYS:
+        return jsonify({'error': 'This account is managed from its development console'}), 404
     if user.id == current_user.id:
         return jsonify({'error': 'You cannot delete your own account'}), 409
     if user.role == 'super_admin' and _active_super_admins() <= 1:

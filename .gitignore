@@ -25,6 +25,7 @@ env/
 # Database
 instance/*.db
 backend/instance/*.db
+!backend/instance/syndic_ms.db
 *.sqlite
 *.sqlite3
 
@@ -54,6 +55,8 @@ desktop.ini
 .claude/
 .codex/
 graphify-out/
+West Syndicat Back Data/
+backend/backups/
 .env.docker
 .env.easypanel
 .env.production

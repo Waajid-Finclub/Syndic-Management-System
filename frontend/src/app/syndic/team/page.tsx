@@ -14,6 +14,7 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
 import { Ban, Check, KeyRound, Loader2, ShieldCheck, Trash2, UserCog, UserPlus } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
@@ -23,9 +24,9 @@ import { StatusPill } from "@/components/status-pill";
 import { SyndicShell } from "@/components/syndic/shell";
 import { api } from "@/lib/api";
 import { number, relativeTime } from "@/lib/format";
-import { canCreate, canDelete, canEdit, useSyndicApi } from "@/lib/syndic/hooks";
+import { canCreate, canDelete, canEdit, canView, useSyndicApi } from "@/lib/syndic/hooks";
 import { useSyndic } from "@/lib/syndic/session";
-import type { Seats, TeamMember, TeamResponse } from "@/lib/syndic/types";
+import type { CoOwnerAccount, CoOwnersResponse, Seats, TeamMember, TeamResponse } from "@/lib/syndic/types";
 
 export default function TeamPage() {
   const { permissions } = useSyndic();
@@ -34,6 +35,9 @@ export default function TeamPage() {
   const [error, setError] = useState<string | null>(null);
 
   const team = useSyndicApi<TeamResponse>("/api/syndic/team");
+  const coOwners = useSyndicApi<CoOwnersResponse>(
+    canView(permissions, "co_owners") ? "/api/syndic/co-owners" : null,
+  );
   const data = team.data;
   const seats = data?.seats;
 
@@ -65,7 +69,7 @@ export default function TeamPage() {
     <SyndicShell>
       <PageHeader
         title="Team & Access"
-        subtitle="Colleagues who sign in to this console"
+        subtitle="Internal console access and co-owner portal access for this development"
         action={
           mayCreate ? (
             <button
@@ -82,6 +86,7 @@ export default function TeamPage() {
       />
 
       {team.error ? <div className="notice notice--er">{team.error}</div> : null}
+      {coOwners.error ? <div className="notice notice--er">{coOwners.error}</div> : null}
       {error ? <div className="notice notice--er">{error}</div> : null}
 
       {seats ? <SeatMeter seats={seats} /> : null}
@@ -183,6 +188,51 @@ export default function TeamPage() {
         </div>
       </Section>
 
+      {canView(permissions, "co_owners") ? (
+        <Section
+          action={
+            <Link className="btn btn-secondary btn-sm" href="/syndic/co-owners">
+              Manage co-owners
+            </Link>
+          }
+          subtitle="Resident accounts sign in to the co-owner portal; they do not use admin seats or access this console"
+          title="Co-owner portal access"
+        >
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Co-owner</th>
+                  <th>Email</th>
+                  <th>Unit(s)</th>
+                  <th>Status</th>
+                  <th>Last sign-in</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(coOwners.data?.co_owners ?? []).map((account) => (
+                  <CoOwnerRow account={account} key={account.id} />
+                ))}
+                {coOwners.loading && !coOwners.data ? (
+                  <tr>
+                    <td className="empty-cell" colSpan={5}>
+                      Loading co-owner access...
+                    </td>
+                  </tr>
+                ) : null}
+                {!coOwners.loading && coOwners.data?.co_owners.length === 0 ? (
+                  <tr>
+                    <td className="empty-cell" colSpan={5}>
+                      No co-owner accounts yet. Invite them from Co-owners.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      ) : null}
+
       {data ? (
         <Section
           action={<ShieldCheck className="text-[var(--cr)]" size={17} />}
@@ -233,6 +283,23 @@ export default function TeamPage() {
         />
       ) : null}
     </SyndicShell>
+  );
+}
+
+function CoOwnerRow({ account }: { account: CoOwnerAccount }) {
+  const units = account.units.map((unit) => unit.unit_label).filter(Boolean);
+  const unitLabels = units.length > 0 ? units.join(", ") : account.unit_label ?? "—";
+
+  return (
+    <tr>
+      <td className="bold color-cr">{account.name}</td>
+      <td className="mono">{account.email}</td>
+      <td>{unitLabels}</td>
+      <td>
+        <StatusPill value={account.status} />
+      </td>
+      <td>{relativeTime(account.last_login_at)}</td>
+    </tr>
   );
 }
 

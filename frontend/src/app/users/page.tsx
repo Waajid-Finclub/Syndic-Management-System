@@ -5,7 +5,6 @@ import { Check, Loader2, Minus, Plus, Search, ShieldCheck, UserPlus } from "luci
 import { AppShell } from "@/components/app-shell";
 import { Modal } from "@/components/modal";
 import { PageHeader } from "@/components/page-header";
-import { SelectMenu } from "@/components/select-menu";
 import { MetricTile } from "@/components/stat-card";
 import { StatusPill } from "@/components/status-pill";
 import { Section } from "@/components/section";
@@ -13,9 +12,7 @@ import { api } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { useApi } from "@/lib/hooks";
 import { canCreate } from "@/lib/permissions";
-import type { Development, DevelopmentListResponse, User, UsersResponse } from "@/lib/types";
-
-const CONSOLE_ROLES = new Set(["super_admin", "platform_admin", "support_user", "auditor"]);
+import type { User, UsersResponse } from "@/lib/types";
 
 export default function UsersPage() {
   const [query, setQuery] = useState("");
@@ -23,7 +20,6 @@ export default function UsersPage() {
 
   const session = useApi<{ user: User | null }>("/api/auth/me");
   const registry = useApi<UsersResponse>("/api/users/");
-  const properties = useApi<DevelopmentListResponse>("/api/developments/");
 
   const currentUser = session.data?.user ?? null;
   const data = registry.data;
@@ -43,12 +39,12 @@ export default function UsersPage() {
     <AppShell onSearch={setQuery} searchPlaceholder="Search name, email, role..." searchValue={query}>
       <PageHeader
         title="Users & Access Rights"
-        subtitle="Every account on the platform, across the console, the syndic app and the resident app"
+        subtitle="Internal access to SyndicMS itself and client syndic management only"
         action={
           canCreate(currentUser, "users") ? (
             <button className="btn btn-primary" onClick={() => setCreating(true)} type="button">
               <UserPlus size={13} />
-              Create user
+              Create super admin
             </button>
           ) : null
         }
@@ -67,8 +63,8 @@ export default function UsersPage() {
       <div className="section">
         <div className="section__header">
           <div>
-            <h2 className="section__title">User registry</h2>
-            <p className="section__sub">{rows.length} account{rows.length === 1 ? "" : "s"} shown</p>
+            <h2 className="section__title">Internal access directory</h2>
+            <p className="section__sub">{rows.length} platform or syndic management account{rows.length === 1 ? "" : "s"} shown</p>
           </div>
           <div className="searchbox">
             <Search size={14} />
@@ -93,7 +89,6 @@ export default function UsersPage() {
                   <th>Status</th>
                   <th>Last login</th>
                   <th>MFA</th>
-                  <th>WA</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,19 +105,18 @@ export default function UsersPage() {
                     </td>
                     <td>{relativeTime(user.last_login_at)}</td>
                     <td>{user.mfa_enabled ? <Check className="text-[var(--ok)]" size={13} /> : <Minus className="color-mt" size={13} />}</td>
-                    <td>{user.whatsapp_enabled ? <Check className="text-[var(--ok)]" size={13} /> : <Minus className="color-mt" size={13} />}</td>
                   </tr>
                 ))}
                 {registry.loading && !rows.length ? (
                   <tr>
-                    <td className="empty-cell" colSpan={8}>
+                      <td className="empty-cell" colSpan={7}>
                       Loading users...
                     </td>
                   </tr>
                 ) : null}
                 {!registry.loading && !rows.length ? (
                   <tr>
-                    <td className="empty-cell" colSpan={8}>
+                      <td className="empty-cell" colSpan={7}>
                       No users match this view
                     </td>
                   </tr>
@@ -136,7 +130,7 @@ export default function UsersPage() {
       {data ? (
         <Section
           title="Role permission matrix"
-          subtitle="What each role may do once signed in"
+          subtitle="Super admins administer SyndicMS itself; syndic managers administer their assigned client development."
           action={<ShieldCheck className="text-[var(--cr)]" size={17} />}
         >
           {data.roles.map((role) => (
@@ -155,8 +149,6 @@ export default function UsersPage() {
             setCreating(false);
             await registry.reload();
           }}
-          properties={properties.data?.developments ?? []}
-          roles={data?.roles ?? []}
         />
       ) : null}
     </AppShell>
@@ -166,25 +158,15 @@ export default function UsersPage() {
 function CreateUserModal({
   onClose,
   onSaved,
-  properties,
-  roles,
 }: {
   onClose: () => void;
   onSaved: () => Promise<void>;
-  properties: Development[];
-  roles: { key: string; label: string }[];
 }) {
-  const [role, setRole] = useState("syndic_manager");
-  const [developmentId, setDevelopmentId] = useState("");
+  const role = "super_admin";
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const needsPassword = CONSOLE_ROLES.has(role);
-  const roleOptions = roles.map((item) => ({ value: item.key, label: item.label }));
-  const propertyOptions = properties.map((property) => ({
-    value: String(property.id),
-    label: property.name,
-  }));
+  const needsPassword = true;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -201,8 +183,6 @@ function CreateUserModal({
           email: form.get("email"),
           phone: form.get("phone"),
           role,
-          development_id: developmentId ? Number(developmentId) : null,
-          unit_label: form.get("unit_label"),
           password: form.get("password") || null,
           mfa_enabled: needsPassword,
         },
@@ -229,8 +209,8 @@ function CreateUserModal({
       }
       icon={<UserPlus size={17} />}
       onClose={onClose}
-      subtitle="Console roles need a password; resident and vendor accounts are invited from the syndic console"
-      title="Create user"
+      subtitle="This creates a Super Admin for the SyndicMS software platform. Syndic managers are provisioned from Client Admins."
+      title="Create SyndicMS super admin"
       wide
     >
       <form id="create-user-form" onSubmit={submit}>
@@ -265,33 +245,8 @@ function CreateUserModal({
 
         <div className="form-grid mt-4">
           <div>
-            <label className="label">Role</label>
-            <SelectMenu ariaLabel="Role" fullWidth onChange={setRole} options={roleOptions} shape="field" value={role} />
-          </div>
-          <div>
-            <label className="label">Property scope</label>
-            <SelectMenu
-              ariaLabel="Property scope"
-              fullWidth
-              onChange={setDevelopmentId}
-              options={propertyOptions}
-              placeholder="Platform-wide"
-              shape="field"
-              value={developmentId}
-            />
-          </div>
-        </div>
-
-        <div className="form-grid mt-4">
-          <div>
-            <label className="label" htmlFor="unit_label">
-              Unit (owners and tenants)
-            </label>
-            <input className="field" id="unit_label" name="unit_label" placeholder="e.g. 4B" />
-          </div>
-          <div>
             <label className="label" htmlFor="password">
-              Password {needsPassword ? "" : "(optional)"}
+              Password
             </label>
             <input
               className="field"
@@ -304,17 +259,15 @@ function CreateUserModal({
           </div>
         </div>
 
-        {needsPassword ? (
-          <div className="notice notice--info mt-4">
-            <ShieldCheck size={15} />
-            <div>
-              <div className="notice__title">Console account</div>
-              <div className="notice__sub">
-                This role can sign in to the admin console. MFA is enabled by default and every action is audited.
-              </div>
+        <div className="notice notice--info mt-4">
+          <ShieldCheck size={15} />
+          <div>
+            <div className="notice__title">SyndicMS platform account</div>
+            <div className="notice__sub">
+              This role administers the software platform itself. MFA is enabled by default and every action is audited.
             </div>
           </div>
-        ) : null}
+        </div>
       </form>
     </Modal>
   );

@@ -12,7 +12,6 @@
 
 import Link from "next/link";
 import {
-  AlertTriangle,
   Banknote,
   Building2,
   CalendarClock,
@@ -24,7 +23,7 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Section } from "@/components/section";
-import { MetricTile, StatCard } from "@/components/stat-card";
+import { StatCard } from "@/components/stat-card";
 import { StatusPill } from "@/components/status-pill";
 import { SyndicShell } from "@/components/syndic/shell";
 import { compactMoney, formatDate, money, number, percent, relativeTime } from "@/lib/format";
@@ -49,25 +48,23 @@ export default function SyndicDashboardPage() {
               )} units`
             : "Loading..."
         }
+        action={
+          <Link className="btn btn-primary" href="/syndic/finance?tab=arrears">
+            Review arrears
+          </Link>
+        }
       />
 
       {error ? <div className="notice notice--er">{error}</div> : null}
 
       {kpis ? (
         <>
-          <div className="kpi-grid">
+          <div className="kpi-grid kpi-grid--compact">
             <StatCard
               icon={Banknote}
-              label="Outstanding"
-              sub={`${number(kpis.overdue_units)} unit${kpis.overdue_units === 1 ? "" : "s"} in arrears`}
+              label="Collection priority"
+              sub={`${compactMoney(kpis.overdue)} overdue across ${number(kpis.overdue_units)} unit${kpis.overdue_units === 1 ? "" : "s"}`}
               value={compactMoney(kpis.outstanding)}
-            />
-            <StatCard
-              icon={AlertTriangle}
-              label="Overdue"
-              sub="Past the due date"
-              tone="text-[var(--er)]"
-              value={compactMoney(kpis.overdue)}
             />
             <StatCard
               icon={TrendingUp}
@@ -84,19 +81,6 @@ export default function SyndicDashboardPage() {
             />
           </div>
 
-          <div className="metric-strip">
-            <MetricTile center label="Units" value={number(kpis.units)} />
-            <MetricTile
-              center
-              label="Units with an owner"
-              sub={`${number(kpis.units - kpis.units_with_owner)} unallocated`}
-              value={number(kpis.units_with_owner)}
-            />
-            <MetricTile center label="Co-owner accounts" value={number(kpis.co_owner_accounts)} />
-            <MetricTile center label="Shares allocated" value={number(kpis.total_shares)} />
-            <MetricTile center label="Bookings today" value={number(data.today.bookings)} />
-            <MetricTile center label="Visitors today" value={number(data.today.visitors)} />
-          </div>
         </>
       ) : null}
 
@@ -109,8 +93,8 @@ export default function SyndicDashboardPage() {
               All arrears
             </Link>
           }
-          subtitle="Highest balances first — where collection effort goes"
-          title="Who owes the most"
+          subtitle="Highest balances first — start collection work here"
+          title="Collection priority"
         >
           {data && data.arrears_top.length ? (
             <div className="table-wrap">
@@ -150,8 +134,8 @@ export default function SyndicDashboardPage() {
               Full queue
             </Link>
           }
-          subtitle="Newest first"
-          title="Open maintenance"
+          subtitle="Open work that needs an operational decision"
+          title="Maintenance priority"
         >
           {data && data.recent_requests.length ? (
             <div className="table-wrap">
@@ -193,20 +177,17 @@ export default function SyndicDashboardPage() {
       </div>
 
       <div className="split-grid">
-        <Section subtitle="Money set aside by the co-ownership" title="Funds">
+        <Section subtitle="Billing status and money set aside for the co-ownership" title="Finance status">
           {data && data.funds.length ? (
-            <div className="metric-strip">
+            <div className="stack-list">
               {data.funds.map((fund) => (
-                <MetricTile
-                  key={fund.id}
-                  label={fund.name}
-                  sub={
-                    fund.target_balance
-                      ? `Target ${compactMoney(fund.target_balance)}`
-                      : "No target set"
-                  }
-                  value={compactMoney(fund.balance)}
-                />
+                <div className="alert-row" key={fund.id}>
+                  <span className="alert-row__message">
+                    <strong>{fund.name}</strong>
+                    {fund.target_balance ? ` · target ${compactMoney(fund.target_balance)}` : ""}
+                  </span>
+                  <span className="alert-row__time mono">{compactMoney(fund.balance)}</span>
+                </div>
               ))}
             </div>
           ) : (

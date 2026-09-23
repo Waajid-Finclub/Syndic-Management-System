@@ -20,11 +20,20 @@ import calendar
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 
-from flask import Blueprint, jsonify, request
+from io import BytesIO
+
+from flask import Blueprint, jsonify, request, send_file
 from flask_login import current_user
 
 from ...extensions import db
 from ...models import (
+    BankAccount,
+    BankTransaction,
+    ChartAccount,
+    Expense,
+    FinancialImportBatch,
+    FinancialDocument,
+    FinancialBudgetLine,
     DevelopmentFund,
     Invoice,
     InvoiceLine,
@@ -36,6 +45,7 @@ from ...models.audit import record_audit
 from ...models.billing import INVOICE_TYPE_KEYS, INVOICE_TYPES
 from ...models.billing_run import BILLING_BASIS, BILLING_BASIS_KEYS, BillingRun
 from ...services.ledger import allocate_payment, next_reference, statement
+from ...services.financial_reports import build_snapshot, render_pdf, snapshot_hash
 from ...services.notifications import notify
 from ...utils.validation import as_date, as_int, clean_string, json_dict, one_of
 from ._access import (
@@ -928,3 +938,212 @@ def _csv(value):
     if any(character in text for character in ',"\n'):
         return '"' + text.replace('"', '""') + '"'
     return text
+# --- Budget lines -----------------------------------------------------------
+
+@finance_bp.route('/budgets/<int:year>', methods=['GET'])
+@require('finance', 'view')
+def list_budget_lines(year):
+    rows = scoped(FinancialBudgetLine).filter(FinancialBudgetLine.period_year == year).all()
+    return jsonify({'year': year, 'lines': [{'id': row.id, 'chart_account_id': row.chart_account_id,
+        'account': row.chart_account.to_dict(), 'amount': float(row.amount or 0), 'notes': row.notes} for row in rows]})
+
+
+@finance_bp.route('/budgets/<int:year>', methods=['POST'])
+@require('finance', 'create')
+def save_budget_line(year):
+    payload = json_dict(request)
+    account, denied = owned(ChartAccount, as_int(payload.get('chart_account_id')))
+    if denied:
+        return denied
+    amount = _decimal(payload.get('amount'))
+    if amount is None or amount < ZERO:
+        return jsonify({'error': 'Budget amount must be zero or greater'}), 400
+    line = scoped(FinancialBudgetLine).filter_by(period_year=year, chart_account_id=account.id).first()
+    if line is None:
+        line = FinancialBudgetLine(development_id=current_development_id(), period_year=year,
+                                   chart_account_id=account.id, amount=amount,
+                                   notes=clean_string(payload.get('notes'), 255))
+        db.session.add(line)
+    else:
+        line.amount, line.notes = amount, clean_string(payload.get('notes'), 255)
+    db.session.commit()
+    return jsonify({'id': line.id, 'amount': float(line.amount), 'year': line.period_year})
+
+# --- Issued financial documents ---------------------------------------------
+
+DOCUMENT_PREFIXES = {
+    'statement': 'STA', 'receipt': 'RCT', 'monthly_report': 'MFR',
+    'bank_reconciliation': 'REC', 'expense_voucher': 'VOU',
+    'budget_actual': 'BVA', 'levy_notice': 'LEV', 'agm_pack': 'AGM',
+}
+
+
+def _document_reference(document_type):
+    prefix = DOCUMENT_PREFIXES.get(document_type, 'DOC')
+    count = FinancialDocument.query.filter(FinancialDocument.reference.like(f'{prefix}-%')).count()
+    return f'{prefix}-{date.today().year}-{count + 1:04d}'
+
+
+@finance_bp.route('/documents', methods=['GET'])
+@require('finance', 'export')
+def list_financial_documents():
+    return jsonify({'documents': [row.to_dict() for row in scoped(FinancialDocument).order_by(
+        FinancialDocument.issued_at.desc(), FinancialDocument.id.desc()).all()]})
+
+
+@finance_bp.route('/documents/preview', methods=['POST'])
+@require('finance', 'export')
+def preview_financial_document():
+    """Build a non-persistent document preview before the user issues it.
+
+    Issuing a financial document deliberately creates an immutable snapshot. A
+    preview lets the manager verify the source, period and totals first, without
+    filling the audit trail with abandoned drafts.
+    """
+    payload = json_dict(request)
+    document_type = clean_string(payload.get('document_type'))
+    if document_type not in DOCUMENT_PREFIXES:
+        return jsonify({'error': 'Choose a supported financial document type'}), 400
+    try:
+        snapshot = build_snapshot(document_type, current_development(), payload)
+    except (ValueError, TypeError, KeyError):
+        return jsonify({'error': 'The supplied document inputs are invalid'}), 400
+    return jsonify({'preview': snapshot})
+
+
+@finance_bp.route('/documents', methods=['POST'])
+@require('finance', 'export')
+def issue_financial_document():
+    payload = json_dict(request)
+    document_type = clean_string(payload.get('document_type'))
+    if document_type not in DOCUMENT_PREFIXES:
+        return jsonify({'error': 'Choose a supported financial document type'}), 400
+    try:
+        snapshot = build_snapshot(document_type, current_development(), payload)
+    except (ValueError, TypeError, KeyError):
+        return jsonify({'error': 'The supplied document inputs are invalid'}), 400
+    unit_id = as_int(payload.get('unit_id'))
+    if unit_id:
+        unit, denied = owned(Unit, unit_id)
+        if denied:
+            return denied
+    document = FinancialDocument(
+        development_id=current_development_id(), unit_id=unit_id, issued_by_id=current_user.id,
+        document_type=document_type, reference=_document_reference(document_type),
+        title=snapshot['title'], period_start=as_date(payload.get('start')),
+        period_end=as_date(payload.get('end')), snapshot=snapshot, snapshot_sha256=snapshot_hash(snapshot),
+    )
+    db.session.add(document)
+    record_audit('CREATE', 'FinancialDocument', f'Issued {document.title} {document.reference}',
+                 category='financial', user=current_user, development=current_development())
+    db.session.commit()
+    return jsonify({'document': document.to_dict()}), 201
+
+
+@finance_bp.route('/documents/<int:document_id>/pdf', methods=['GET'])
+@require('finance', 'export')
+def download_financial_document(document_id):
+    document, denied = owned(FinancialDocument, document_id)
+    if denied:
+        return denied
+    buffer = BytesIO()
+    payload = {**document.snapshot, 'reference': document.reference,
+               'issued_at': document.issued_at.strftime('%d %b %Y %H:%M')}
+    render_pdf(buffer, current_development(), {'snapshot': document.snapshot, **payload})
+    buffer.seek(0)
+    return send_file(buffer, mimetype='application/pdf', as_attachment=True,
+                     download_name=f'{document.reference}.pdf')
+
+# --- Accounting workbench ----------------------------------------------------
+
+@finance_bp.route('/accounting/overview', methods=['GET'])
+@require('finance', 'view')
+def accounting_overview():
+    development_id = current_development_id()
+    expenses = scoped(Expense)
+    bank_lines = scoped(BankTransaction)
+    expense_total = db.session.query(db.func.coalesce(db.func.sum(Expense.amount), 0)).filter(
+        Expense.development_id == development_id,
+    ).scalar()
+    return jsonify({
+        'bank_accounts': [account.to_dict() for account in scoped(BankAccount)
+                          .order_by(BankAccount.name).all()],
+        'bank_transaction_count': bank_lines.count(),
+        'unmatched_bank_transaction_count': bank_lines.filter(
+            BankTransaction.match_status != 'matched',
+        ).count(),
+        'expense_count': expenses.count(),
+        'expense_total': float(expense_total or 0),
+        'chart_accounts': [account.to_dict() for account in scoped(ChartAccount)
+                           .order_by(ChartAccount.code).all()],
+        'imports': [batch.to_dict() for batch in scoped(FinancialImportBatch)
+                    .order_by(FinancialImportBatch.imported_at.desc()).all()],
+    })
+
+
+@finance_bp.route('/bank-transactions', methods=['GET'])
+@require('finance', 'view')
+def list_bank_transactions():
+    status = request.args.get('status')
+    query = scoped(BankTransaction).order_by(
+        BankTransaction.transaction_date.desc(), BankTransaction.id.desc(),
+    )
+    if status in ('unmatched', 'suggested', 'matched', 'excluded'):
+        query = query.filter(BankTransaction.match_status == status)
+    return jsonify({'transactions': [row.to_dict() for row in query.limit(500).all()]})
+
+
+@finance_bp.route('/cash-flow', methods=['GET'])
+@require('finance', 'view')
+def cash_flow():
+    """Return actual bank cash movement, never a manufactured forecast."""
+    rows = scoped(BankTransaction).order_by(BankTransaction.transaction_date, BankTransaction.id).all()
+    by_period = {}
+    for row in rows:
+        period = row.transaction_date.strftime('%Y-%m')
+        bucket = by_period.setdefault(period, {
+            'period': period, 'inflow': ZERO, 'outflow': ZERO, 'closing_balance': None,
+        })
+        bucket['inflow'] += Decimal(str(row.credit_amount or 0))
+        bucket['outflow'] += Decimal(str(row.debit_amount or 0))
+        if row.running_balance is not None:
+            bucket['closing_balance'] = Decimal(str(row.running_balance))
+
+    periods = sorted(by_period)[-12:]
+    monthly = [{
+        'period': period,
+        'inflow': float(by_period[period]['inflow']),
+        'outflow': float(by_period[period]['outflow']),
+        'net': float(by_period[period]['inflow'] - by_period[period]['outflow']),
+        'closing_balance': float(by_period[period]['closing_balance'])
+            if by_period[period]['closing_balance'] is not None else None,
+    } for period in periods]
+    latest = rows[-1] if rows else None
+    current_balance = latest.running_balance if latest and latest.running_balance is not None else None
+    return jsonify({
+        'as_of': latest.transaction_date.isoformat() if latest else None,
+        'current_balance': float(current_balance) if current_balance is not None else None,
+        'months': monthly,
+        'unmatched_count': sum(1 for row in rows if row.match_status != 'matched'),
+        'source': 'Imported bank transactions',
+    })
+
+
+@finance_bp.route('/expenses', methods=['GET'])
+@require('finance', 'view')
+def list_expenses():
+    return jsonify({
+        'expenses': [row.to_dict() for row in scoped(Expense).order_by(
+            Expense.expense_date.desc(), Expense.id.desc(),
+        ).limit(500).all()],
+    })
+
+
+@finance_bp.route('/chart-of-accounts', methods=['GET'])
+@require('finance', 'view')
+def chart_of_accounts():
+    return jsonify({
+        'accounts': [row.to_dict() for row in scoped(ChartAccount).order_by(
+            ChartAccount.code,
+        ).all()],
+    })

@@ -259,7 +259,7 @@ CORS_ORIGINS=https://staging.blocwise.net
 FRONTEND_PORT=3000
 SECRET_KEY=<long-random-secret>
 DATABASE_URL=mysql://mysql:<db-password>@bms_v1_syndic-db:3306/bms_v1
-RESET_DATABASE_ON_STARTUP=true
+RESET_DATABASE_ON_STARTUP=false
 SESSION_COOKIE_SECURE=true
 SESSION_COOKIE_SAMESITE=Lax
 PAYMENT_GATEWAY=simulated
@@ -269,7 +269,7 @@ API_REQUEST_DEBUG=false
 
 Important: `DATABASE_URL` must end with `/bms_v1`. Remove any trailing `+` from the EasyPanel value before deploying.
 
-For staging refreshes, keep `RESET_DATABASE_ON_STARTUP=true` in the EasyPanel app environment. Each EasyPanel redeploy/start runs `python seed.py --reset` before the server starts, so the database is dropped and rebuilt with only the three baseline login accounts. Set it to `false` before using a database you want to keep.
+Keep `RESET_DATABASE_ON_STARTUP=false` for West Syndicat. Enabling it runs the development dummy-data seeder at every startup and would erase the imported financial history. For the one-time production migration, follow [the West Syndicat deployment guide](docs/west-syndicat-deployment.md).
 
 The database values from EasyPanel are:
 
