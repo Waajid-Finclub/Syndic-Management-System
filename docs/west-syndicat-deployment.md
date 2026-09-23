@@ -38,10 +38,21 @@ values before the next deployment.
 
 1. Take an EasyPanel/MySQL backup.
 2. Deploy this commit with `RESET_DATABASE_ON_STARTUP=false`.
-3. Open an application terminal in the deployed container and run:
+3. Open an application terminal in the deployed container and run the command
+   matching the deployment layout:
+
+   Single-container image (`Dockerfile`):
 
    ```sh
    cd /app/backend
+   python migrate_west_syndicat.py --check
+   python migrate_west_syndicat.py --replace
+   ```
+
+   EasyPanel Compose backend service (`docker-compose.easypanel.yml`):
+
+   ```sh
+   cd /app
    python migrate_west_syndicat.py --check
    python migrate_west_syndicat.py --replace
    ```
