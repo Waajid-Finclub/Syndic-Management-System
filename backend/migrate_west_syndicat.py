@@ -4,12 +4,14 @@
 This is a data migration, not a development seed.  It first creates any tables
 introduced by the current application models, then copies the versioned SQLite
 snapshot into the database selected by ``DATABASE_URL``.  Existing data is
-never replaced unless ``--replace`` is supplied deliberately.
+never replaced unless ``--replace`` is supplied deliberately. ``--if-needed``
+makes a replace-on-startup setup safe: after a successful copy is recorded,
+future starts skip it.
 
 Examples:
     python migrate_west_syndicat.py --check
     DATABASE_URL='mysql://user:password@host:3306/syndic_ms' \
-      python migrate_west_syndicat.py --replace
+      python migrate_west_syndicat.py --replace --if-needed
 """
 from __future__ import annotations
 
@@ -78,10 +80,21 @@ def target_has_data(connection) -> bool:
     return False
 
 
-def copy_snapshot(snapshot: Path, replace: bool) -> tuple[int, int]:
+def already_applied(connection, snapshot_hash: str) -> bool:
+    return connection.execute(
+        text('''
+            SELECT 1 FROM application_data_migrations
+            WHERE migration_id = :migration_id AND snapshot_sha256 = :snapshot_sha256
+        '''),
+        {'migration_id': MIGRATION_ID, 'snapshot_sha256': snapshot_hash},
+    ).first() is not None
+
+
+def copy_snapshot(snapshot: Path, replace: bool, if_needed: bool) -> tuple[int, int, bool]:
     source = snapshot_engine(snapshot)
     source_inspector = inspect(source)
     source_tables = set(source_inspector.get_table_names())
+    snapshot_hash = sha256(snapshot)
     copied_tables = 0
     copied_rows = 0
 
@@ -89,6 +102,8 @@ def copy_snapshot(snapshot: Path, replace: bool) -> tuple[int, int]:
         db.create_all()
         with db.engine.begin() as target:
             ensure_migration_register(target)
+            if if_needed and already_applied(target, snapshot_hash):
+                return 0, 0, True
             if target_has_data(target) and not replace:
                 raise RuntimeError(
                     'The target database already contains data. Re-run with --replace only after '
@@ -126,21 +141,28 @@ def copy_snapshot(snapshot: Path, replace: bool) -> tuple[int, int]:
                 '''),
                 {
                     'migration_id': MIGRATION_ID,
-                    'snapshot_sha256': sha256(snapshot),
+                    'snapshot_sha256': snapshot_hash,
                     'applied_at': datetime.now(timezone.utc),
                 },
             )
     finally:
         source.dispose()
-    return copied_tables, copied_rows
+    return copied_tables, copied_rows, False
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--snapshot', type=Path, default=DEFAULT_SNAPSHOT)
     parser.add_argument('--replace', action='store_true', help='replace all existing application data')
+    parser.add_argument(
+        '--if-needed',
+        action='store_true',
+        help='skip when this exact snapshot has already been applied successfully',
+    )
     parser.add_argument('--check', action='store_true', help='validate the committed snapshot only')
     args = parser.parse_args()
+    if args.if_needed and not args.replace:
+        parser.error('--if-needed requires --replace')
 
     snapshot = args.snapshot.resolve()
     if not snapshot.is_file():
@@ -158,8 +180,11 @@ def main() -> int:
         target_url = str(db.engine.url)
         if target_url.startswith('sqlite:///') and Path(target_url.removeprefix('sqlite:///')).resolve() == snapshot:
             raise RuntimeError('The target DATABASE_URL cannot be the snapshot file itself.')
-        tables_copied, rows_copied = copy_snapshot(snapshot, args.replace)
+        tables_copied, rows_copied, skipped = copy_snapshot(snapshot, args.replace, args.if_needed)
 
+    if skipped:
+        print('Migration already applied; no database changes made.')
+        return 0
     print(f'Migration complete: {tables_copied} tables and {rows_copied:,} rows copied.')
     return 0
 

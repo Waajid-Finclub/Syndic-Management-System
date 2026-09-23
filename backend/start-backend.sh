@@ -5,6 +5,7 @@ export APP_ENV="${APP_ENV:-production}"
 export REQUIRE_STRONG_SECRET="${REQUIRE_STRONG_SECRET:-true}"
 export PREPARE_DATABASE_ON_STARTUP="${PREPARE_DATABASE_ON_STARTUP:-true}"
 export RESET_DATABASE_ON_STARTUP="${RESET_DATABASE_ON_STARTUP:-false}"
+export WEST_SYNDICAT_MIGRATION_ON_STARTUP="${WEST_SYNDICAT_MIGRATION_ON_STARTUP:-false}"
 export SESSION_COOKIE_SECURE="${SESSION_COOKIE_SECURE:-true}"
 export SESSION_COOKIE_SAMESITE="${SESSION_COOKIE_SAMESITE:-Lax}"
 export CSRF_ENABLED="${CSRF_ENABLED:-true}"
@@ -16,6 +17,22 @@ is_enabled() {
     *) return 1 ;;
   esac
 }
+
+case "$(printf '%s' "$WEST_SYNDICAT_MIGRATION_ON_STARTUP" | tr '[:upper:]' '[:lower:]')" in
+  false|0|no|off|"") ;;
+  replace_once)
+    if is_enabled "$RESET_DATABASE_ON_STARTUP"; then
+      echo "WEST_SYNDICAT_MIGRATION_ON_STARTUP cannot run with RESET_DATABASE_ON_STARTUP." >&2
+      exit 1
+    fi
+    echo "Applying West Syndicat migration if it has not already completed."
+    python migrate_west_syndicat.py --replace --if-needed
+    ;;
+  *)
+    echo "Invalid WEST_SYNDICAT_MIGRATION_ON_STARTUP value. Use replace_once or false." >&2
+    exit 1
+    ;;
+esac
 
 if is_enabled "$RESET_DATABASE_ON_STARTUP"; then
   echo "RESET_DATABASE_ON_STARTUP is enabled; dropping and reseeding the database."
