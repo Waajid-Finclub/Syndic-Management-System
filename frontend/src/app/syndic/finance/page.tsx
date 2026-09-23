@@ -363,7 +363,7 @@ function FinanceScreen() {
 
 // --- Cash flow --------------------------------------------------------------
 
-function CashFlowPanel({ data, loading }: { data?: CashFlowResponse; loading: boolean }) {
+function CashFlowPanel({ data, loading }: { data: CashFlowResponse | null; loading: boolean }) {
   const months = data?.months ?? [];
   const max = Math.max(...months.flatMap((month) => [month.inflow, month.outflow]), 1);
   const periodLabel = (period: string) => new Intl.DateTimeFormat("en-MU", {
