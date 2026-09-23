@@ -1,7 +1,7 @@
 # West Syndicat production database deployment
 
 The repository contains the reviewed, populated SQLite snapshot at
-`backend/instance/syndic_ms.db`. It is versioned intentionally so a new
+`backend/seed_data/west-syndicat-populated.db`. It is versioned intentionally so a new
 environment can receive the exact approved West Syndicat dataset without
 requiring the original source spreadsheets.
 

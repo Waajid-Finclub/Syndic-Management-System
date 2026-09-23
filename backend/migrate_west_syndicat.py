@@ -28,7 +28,9 @@ from app.extensions import db
 
 
 BACKEND_ROOT = Path(__file__).resolve().parent
-DEFAULT_SNAPSHOT = BACKEND_ROOT / 'instance' / 'syndic_ms.db'
+# This is deliberately outside ``instance/``: Docker ignores that directory
+# because it is reserved for the mutable runtime database and uploads.
+DEFAULT_SNAPSHOT = BACKEND_ROOT / 'seed_data' / 'west-syndicat-populated.db'
 MIGRATION_ID = '2026-09-23-west-syndicat-financial-snapshot'
 BATCH_SIZE = 250
 

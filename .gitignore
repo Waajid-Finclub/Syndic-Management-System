@@ -25,7 +25,6 @@ env/
 # Database
 instance/*.db
 backend/instance/*.db
-!backend/instance/syndic_ms.db
 *.sqlite
 *.sqlite3
 

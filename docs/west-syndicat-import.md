@@ -45,6 +45,6 @@ separately verified backup and reconciliation sign-off.
 
 The raw source folder and local backups are ignored by Git. The reviewed,
 populated SQLite snapshot is intentionally versioned at
-`backend/instance/syndic_ms.db`; use `migrate_west_syndicat.py` to load that
+`backend/seed_data/west-syndicat-populated.db`; use `migrate_west_syndicat.py` to load that
 approved snapshot into a deployment database.
 
